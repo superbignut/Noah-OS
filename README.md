@@ -1,1 +1,7 @@
-# Noah-OS
+Reference
+- - -
+[https://github.com/tuhdo/os01](https://github.com/tuhdo/os01)
+
+[https://github.com/cfenollosa/os-tutorial](https://github.com/cfenollosa/os-tutorial)
+
+
