@@ -16,14 +16,31 @@
 
     在这里我们选用了flat类型，含义是可以将整个磁盘的不同存储区域当作一个逻辑上连续的空间进行访问。其余的类型则对应着不同的虚拟机。并且相对于growing，flat的特点是大小一次全部分配，而不是随着使用而增长。
 
+    其中的 [lba]() 指的是： Todo:
+
 3. [qemu](https://wiki.qemu.org/Main_Page)
 
     从功能上来看，qemu 和 bochs 类以，也是一个模拟器，下面[引用](https://people.redhat.com/pbonzini/qemu-test-doc/_build/html/topics/QEMU-compared-to-other-emulators.html)一段两者的区别，似乎在说，bochs 主打 x86 而 qemu 主打各种 CPU
     > Like bochs, QEMU emulates an x86 CPU. But QEMU is much faster than bochs as it uses dynamic compilation. Bochs is closely tied to x86 PC emulation while QEMU can emulate several processors.
 
-4. nasm
+4. [nasm assembler](https://www.nasm.us/)
 
-5. bximage_lba
+    一个面向x86 CPU的汇编和反汇编工具，说白了就也是一个编译器，和gcc一样。
+    
+    + 问题4.1：使用下面的命令编译时，生成的指令的格式是什么？
+        > nasm hello.asm -o nasm        
+
+    首先 man手册提到，-f 参数的默认情况是 -f bin ; 
+    
+    其次根据[nasm手册7.1节](https://www.nasm.us/xdoc/2.16.02/html/nasmdoc0.html) 中提到的：
+
+    >The most likely reason for using the BITS directive is to write 32-bit or 64-bit code in a flat binary file; this is because the bin output format defaults to 16-bit mode in anticipation of it being used most frequently to write DOS .COM programs, DOS .SYS device drivers and boot loader software.
+
+    所以，bin的默认输出是16位指令，并且7.1节还对 BITS 的其他用法进行了说明，在os01的教程中也有提到。
+
+5. [lba](https://en.wikipedia.org/wiki/Logical_block_addressing)
+    
+    使用单一编号进行对不同磁盘分区进行索引，取代了传统的使用 cylinder-head-sector 方法。
 
 6. [virtual-box](https://www.virtualbox.org/)
 
