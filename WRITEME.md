@@ -73,6 +73,33 @@
 
     这里指出，有关启动的设计需要看[MCS-86 Family User’s Manual](https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf), 这里也去看一下：
 
+    > Chapter1 describes the architecture of the 8086 family, Chapter2 describes the 8086 and 8088 CPU, Chapter3 covers Input/Output Processor.
+
+    具体的有关CPU的内容是在第二章
+
+    > In addition, during periods when the EU(Exection unit) is busy executing instructions, the BIU(Bus Interface Unit) looks ahead and featches more instructions from memory.
+
+    这部分在说8086没有使用传统的流水线的执行指令的方式，而是增加了一个BIU单元， 类似一个队列的数据结构
+
+    > The CS register points to the current code segment; The SS register points to the current stack segment; The DS register points to the current data segment; The ES register points to the current extra segemnts; The 16-bit IP(instruction pointer) is updated by the BIU so that it constans the offset of the next instruction from the beginning of the current code segment;
+
+    介绍了一些寄存器，当然后面还介绍了FLAG和寄存器和FLAG的关系。
+
+    > It is useful to think of every memory location as having two kinds of addresses, pyhsical and logical.Pyhsical addresses may range from 0H through FFFFFH.
+    Programs deal with logical, rather than pyhsical addresses and allow code to be developed without prior knowledge of where the code is to be located in memory and facilitate dynamic management of memory resources.
+
+    介绍了逻辑地址和物理地址。
+
+    > Two areas in extreme low and high memory are dedicated to specific processor functions or are reserved by Intel. The locations are OH-7FH(128 bytes) and FFFF0H-FFFFFH(16 bytes) Theres areas are used for interrupt and system reset processing.
+
+    大致的提到了8086的两块保留内存。
+
+    > THe 8086 can access either 8 or 16 bits of memory at a time. If an instruction refers to a word variable and variable is located at an even-numbered address, 8086 accesses the complete word in one bus cycle, odd-numbered address -> one byte.
+
+    说到了有关存储大小的内容，后面还有对齐和I/O映射的内容暂时略过。
+
+    这个手册里可以找到好多教科书上的内容和设计，但没有看到显卡的地址说明，可能还要继续仔细的读一下....
+
 8. 先使用 bximage 制作了一块虚拟硬盘.img，然后使用 dd 命令将512字节的.bin 文件写入 .img , 为什么 bochs 就能够直接加载这个硬盘中的指令呢？同样的问题，为什么使用 qemu convert 转换为 vdi格式后，virtual_box也能直接打开呢？不需要一些对硬盘格式的说明吗？
 
 
