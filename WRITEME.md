@@ -100,8 +100,21 @@
 
     这个手册里可以找到好多教科书上的内容和设计，但没有看到显卡的地址说明，可能还要继续仔细的读一下....
 
+    查了google, 0x8B000 似乎就是一个在某种模式下的显示器会读取的 80 * 25 * 2 = 4000 bytes 首地址,有待进一步学习
+
 8. 先使用 bximage 制作了一块虚拟硬盘.img，然后使用 dd 命令将512字节的.bin 文件写入 .img , 为什么 bochs 就能够直接加载这个硬盘中的指令呢？同样的问题，为什么使用 qemu convert 转换为 vdi格式后，virtual_box也能直接打开呢？不需要一些对硬盘格式的说明吗？
+    
+    > qemu-img convert -f raw -O vdi master.img master.vdi
 
+    这里似乎最开始都默认是16位启动，似乎还和实模式和保护模式有关，以后再看....而且好像是除了qemu之外的这几个虚拟机都是只能模拟x86的，所以也就是默认按照x86的模式进行启动和加载，但是qemu可以模拟其他的架构。
 
+9. nasm 编译器语法
+
+    在写最简单的第一个在屏幕上显示字母的汇编程序时，用到了很多奇怪的语法: times, db, $ ,$$之类，查找NASM官网发现[Chapter 3: The NASM Language](https://nasm.us/doc/nasmdoc3.html)中对这些编译的语法都进行了解释，比如：
+
+    > NASM supports two special tokens in expressions, allowing calculations to involve the current assembly position: the $ and $$ tokens. $ evaluates to the assembly position at the beginning of the line containing the expression; so you can code an infinite loop using JMP $. $$ evaluates to the beginning of the current section; so you can tell how far into the section you are by using ($ - $$).
 
     
+        label:    instruction operands        ; comment
+
+    > NASM places no restrictions on white space within a line: labels may have white space before them, or instructions may have no space before them, or anything. The colon after a label is also optional. 
