@@ -100,9 +100,12 @@
 
     这个手册里可以找到好多教科书上的内容和设计，但没有看到显卡的地址说明，可能还要继续仔细的读一下....
 
-    查了google, 0x8B000 似乎就是一个在某种模式下的显示器会读取的 80 * 25 * 2 = 4000 bytes 首地址,有待进一步学习
-
-8. 先使用 bximage 制作了一块虚拟硬盘.img，然后使用 dd 命令将512字节的.bin 文件写入 .img , 为什么 bochs 就能够直接加载这个硬盘中的指令呢？同样的问题，为什么使用 qemu convert 转换为 vdi格式后，virtual_box也能直接打开呢？不需要一些对硬盘格式的说明吗？
+    查了google, 0xB8000 似乎就是一个在某种模式下的显示器会读取的 80 * 25 * 2 = 4000 bytes 首地址,有待进一步学习。
+    +   这里在OSDEV的[Memory map](https://wiki.osdev.org/Memory_Map_(x86))中有提到;
+    + 在[BDA - BIOS Data Area - PC Memory Map](https://stanislavs.org/helppc/bios_data_area.html),也有给出详细的从0x0000到0xFFFF:E的所有地址的用途。
+    + 在踌躇月光的[x86视频02](https://www.bilibili.com/video/BV1b44y1k7mT?p=2&vd_source=5ad68ece2cc478b800d0c26152ca85c7)中也给出了更详细的地址布局，但不太清除出处。
+    + 在踌躇月光的[x86视频03](https://www.bilibili.com/video/BV1b44y1k7mT?p=3&spm_id_from=pageDriver&vd_source=5ad68ece2cc478b800d0c26152ca85c7)中介绍到了0x7c00=31kB地址的历史，具体好像还要追溯到IBM-PC-5150, 待扩充
+1. 先使用 bximage 制作了一块虚拟硬盘.img，然后使用 dd 命令将512字节的.bin 文件写入 .img , 为什么 bochs 就能够直接加载这个硬盘中的指令呢？同样的问题，为什么使用 qemu convert 转换为 vdi格式后，virtual_box也能直接打开呢？不需要一些对硬盘格式的说明吗？
     
         dd if=hello.bin of=master.img bs=512 count=1 conv=notrunc
         
@@ -110,7 +113,7 @@
 
     这里似乎最开始都默认是16位启动，似乎还和实模式和保护模式有关，以后再看....而且好像是除了qemu之外的这几个虚拟机都是只能模拟x86的，所以也就是默认按照x86的模式进行启动和加载，但是qemu可以模拟其他的架构。
 
-9. nasm 编译器语法
+2. nasm 编译器语法
 
     在写最简单的第一个在屏幕上显示字母的汇编程序时，用到了很多奇怪的语法: times, db, $ ,$$之类，在查找NASM官网时看到[Chapter 3: The NASM Language](https://nasm.us/doc/nasmdoc3.html)对这些语法进行了解释，比如：
 
@@ -120,7 +123,7 @@
         label:    instruction operands        ; comment
 
     > NASM places no restrictions on white space within a line: labels may have white space before them, or instructions may have no space before them, or anything. The colon after a label is also optional. 
-10. div指令语法
+3.  div 指令
 
     同样的，书上在计算时，用到了 div指令，在intel [手册上](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)找到了相关内容,其中写到了当div 的操作数是不同格式时的指令描述：
 
@@ -129,3 +132,29 @@
     >  The action of this instruction depends on the operand size (dividend/divisor). Division using 64-bit operand is available only in 64-bit mode.
 
     并且学到一个表示方法：r/m8, r/m16,r/m32,这种写法指的是, 一个 8 位的通用寄存器（register）或者一个 8 位的内存地址（memory location） 
+
+4.  jmp, call, ret 指令
+
+    jmp指令：
+
+    > Transfers program control to a different point in the instruction stream without recording return information.
+
+    intel 手册中指出了4中jump的形式：
+
+    + Near jump : A jump to an instruction within the current code segment (the segment currently pointed to by the CS register)
+    + Short jump : A near jump where the jump range is limited to –128 to +127 from the current EIP value.
+    + Far jump : A jump to an instruction located in a different segment than the current code segment but at the same privilege level
+    + Task switch : A jump to an instruction located in a different task.
+    
+    这里如果不使用 near, short 进行显示标明的话, 猜测编译器会进行判断, 或者当作绝对地址使用
+
+    感觉call指令和jmp指令的区别就是，是否保留当前的环境数据。
+
+    call指令：
+    > Saves procedure linking information on the stack and branches to the called procedure specified using the target operand. 
+
+    ret指令：
+    > Transfers program control to a return address located on the top of the stack. The address is usually placed on the stack by a CALL instruction, and the return is made to the instruction that follows the CALL instruction.
+    
+5.  实模式和保护模式
+
