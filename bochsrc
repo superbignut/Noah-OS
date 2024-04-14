@@ -34,7 +34,7 @@ cpuid: movbe=false, adx=false, aes=false, sha=false, xsave=false, xsaveopt=false
 cpuid: smap=false, mwait=true
 print_timestamps: enabled=0
 debugger_log: -
-magic_break: enabled=1 0x0
+magic_break: enabled=1
 port_e9_hack: enabled=false, all_rings=false
 iodebug: all_rings=0
 private_colormap: enabled=0
