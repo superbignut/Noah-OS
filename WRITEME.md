@@ -116,7 +116,7 @@
 
     这里似乎最开始都默认是16位启动，似乎还和实模式和保护模式有关，以后再看....而且好像是除了qemu之外的这几个虚拟机都是只能模拟x86的，所以也就是默认按照x86的模式进行启动和加载，但是qemu可以模拟其他的架构。
 
-9. nasm 编译器语法
+9. [nasm 编译器语法](https://www.nasm.us/xdoc/2.16.02/html/nasmdoc0.html)
 
     在写最简单的第一个在屏幕上显示字母的汇编程序时，用到了很多奇怪的语法: times, db, $ ,$$之类，在查找NASM官网时看到[Chapter 3: The NASM Language](https://nasm.us/doc/nasmdoc3.html)对这些语法进行了解释，比如：
 
@@ -126,6 +126,12 @@
         label:    instruction operands        ; comment
 
     > NASM places no restrictions on white space within a line: labels may have white space before them, or instructions may have no space before them, or anything. The colon after a label is also optional. 
+
+    + ORG : [Binary File Program Origin](https://www.nasm.us/xdoc/2.16.02/html/nasmdoc8.html)
+    
+    > The function of the ORG directive is to specify the origin address which NASM will assume the program begins at when it is loaded into memory.
+
+    也就是说这是一个编译器的假设，假设程序的首地址，因此当在程序中涉及到具体的地址的时候，这个假设的偏移量都会被加上去。
 10. div 指令
 
     同样的，书上在计算时，用到了 div指令，在intel [手册上](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)找到了相关内容,其中写到了当div 的操作数是不同格式时的指令描述：
@@ -167,5 +173,25 @@
 
     所以x86 启动时，为了考虑兼容性，最开始都会是实模式，也就是16位。
 
-13. x86寄存器
-    + 寄存器和段寄存器
+13. x86寄存器 [参考MCS-86 Family User’s Manual](https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf)
+
+    + 通用寄存器：DATA_GROUP : AX BX CX DX 
+    + 通用寄存器：POINTER_AND_INDEX_GROUP : SP BP SI DI
+    
+        MCS-86 Family User’s Manual还指出，有些指令会隐式的使用特定的寄存器,比如循环的loop会用到cx;
+
+    + 段寄存器 : CS DS SS ES
+    + Instruction Pointer : IP
+    + One-Bit-FLAGS : TF DF IF OF SF ZF AF PF CF 
+    
+14. makefile 特殊字符
+    
+    make的一些特殊的字符在[GNU make 10.5](https://www.gnu.org/software/make/manual/make.html#Automatic-Variables)中有细致的说明：
+
+    + $< 
+    > The name of the first prerequisite. If the target got its recipe from an implicit rule, this will be the first prerequisite added by the implicit rule
+    + $@
+    > The file name of the target of the rule. If the target is an archive member, then ‘$@’ is the name of the archive file.
+
+    + %
+    > A target pattern is composed of a ‘%’ between a prefix and a suffix, either or both of which may be empty. The pattern matches a file name only if the file name starts with the prefix and ends with the suffix, without overlap.

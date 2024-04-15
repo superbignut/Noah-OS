@@ -1,10 +1,5 @@
-mov ax, 3   ; clear screen
-int 0x10    ; clear screen
-mov ax, 0xb800              
-mov ds, ax
-mov byte [ds:0], 'H'
-halt:                   
-    jmp halt            
-
-times 510 - ($ - $$) db 0   
-db 0x55, 0xaa 
+db 0x16
+dw 0x55aa
+dd 0x12345678
+db 0000_1111b
+db 0b1111_0101
