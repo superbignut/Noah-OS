@@ -131,6 +131,9 @@
     
     > The function of the ORG directive is to specify the origin address which NASM will assume the program begins at when it is loaded into memory.
 
+    + EQU： Defining Constants
+    > EQU defines a symbol to a given constant value: when EQU is used, the source line must contain a label. The action of EQU is to define the given label name to the value of its (only) operand. This definition is absolute, and cannot change later.
+
     也就是说这是一个编译器的假设，假设程序的首地址，因此当在程序中涉及到具体的地址的时候，这个假设的偏移量都会被加上去。
 10. div 指令
 
@@ -195,3 +198,10 @@
 
     + %
     > A target pattern is composed of a ‘%’ between a prefix and a suffix, either or both of which may be empty. The pattern matches a file name only if the file name starts with the prefix and ends with the suffix, without overlap.
+
+15. x86寻值方式-寄存器简介寻址
+    
+    参考手册2.8节 [ADDRESSING MODE](https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf)
+    给出了多种寻址方式，并发现涉及寄存器做偏移的只用到了bx,bp,si,di这四个，但是bp寄存器的默认段寄存器是ss和其他默认段寄存器的说明暂时没有看到。
+
+    > A programmer may specify that either BX or BP is to serve as a base register whose content is to be used in the EA computation. Similarly, either SI or DI may be specified as an index register.
