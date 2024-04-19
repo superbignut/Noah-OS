@@ -1,5 +1,2 @@
-db 0x16
-dw 0x55aa
-dd 0x12345678
-db 0000_1111b
-db 0b1111_0101
+start:
+    jmp 0x0:0x7c00

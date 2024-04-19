@@ -4,8 +4,6 @@
 
     int 0x10    ; clear screen
 
-    xchg bx, bx
-
     mov ax, 0xb800              
     mov es, ax  ; es = 0xb800
 
@@ -18,6 +16,7 @@
 
     mov cx, message_end - message
 
+
 loop1:
 
     mov al, [ds:si] ; 把内容h放到al
@@ -29,6 +28,7 @@ loop1:
 
     loop loop1
 
+    xchg bx, bx
 halt:                   
     jmp halt            
 
