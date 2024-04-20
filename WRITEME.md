@@ -311,3 +311,28 @@
             add di, 2
             ret
     比如这里就是在call print时， 将loop loop1的地址压入新的-2后的栈顶。而在print返回时，ret指令又会将栈顶元素拿出来交给cs: ip 
+
+
+19. 内中断和异常，callf 和 retf
+    
+    在intel手册V1-Chapter6和INC指令处有介绍调用、异常和中断
+
+    > The INT n instruction generates a call to the interrupt or exception handler specified with the destination operand (see the section titled “Interrupts and Exceptions” in Chapter 6 of the Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 1). The destination operand specifies a vector from 0 to 255, encoded as an 8-bit unsigned intermediate value. Each vector provides an index to a gate descriptor in the IDT. The first 32 vectors are reserved by Intel for system use. Some of these vectors are used for internally generated exceptions.
+
+
+    > The vector specifies an interrupt descriptor in the interrupt descriptor table (IDT); that is, it provides index into the IDT. The selected interrupt descriptor in turn contains a pointer to an interrupt or exception handler procedure. In protected mode, the IDT contains an array of 8-byte descriptors, each of which is an interrupt gate, trap gate, or task gate. In real-address mode, the IDT is an array of 4-byte far pointers (2-byte code segment selector and a 2-byte instruction pointer), each of which point directly to a procedure in the selected segment. (Note that in real-address mode, the IDT is called the interrupt vector table, and its pointers are called interrupt vectors.)
+
+    在使用call 和call far 时，分别会将ip和cs、ip入栈，而在 int 的时候则是将 cs、ip、EFLAG三个入栈;对应的也就需要ret、retf和iret分别将对应数量的寄存器出栈。
+
+    如果要注册自己的中断函数的话，如下,对第80个中断向量注册了中断处理函数print,也就是要手动处理这4个字节的内容，当然处理函数需要使用iret进行返回操作
+
+            mov word [0x80 * 4], print  ;ip
+            mov word [0x80 * 4 + 2], 0  ;cs
+
+    然后就是，有时需要显示使用 call far 指令才是callf
+
+        call far [ds:print] ;callf
+        call 0x0:print      ;callf
+
+
+
