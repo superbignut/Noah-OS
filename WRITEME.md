@@ -334,5 +334,14 @@
         call far [ds:print] ;callf
         call 0x0:print      ;callf
 
+20. 逻辑运算指令
 
+    AND TEST OR NOT XOR SHL SHR ROL ROR RCL RCR
 
+    > Shifts (rotates) the bits of the first operand (destination operand) the number of bit positions specified in the second operand (count operand) and stores the result in the destination operand. The destination operand can be a register or a memory location; the count operand is an unsigned integer that can be an immediate or a value in the CL register. The count is masked to 5 bits (or 6 bits if in 64-bit mode and REX.W = 1).The rotate left (ROL) and rotate through carry left (RCL) instructions shift all the bits toward ore-significant bit positions, except for the most-significant bit, which is rotated to the least-significant bit location. 
+    
+    > The rotate right (ROR) and rotate through carry right (RCR) instructions shift all the bits toward less significant bit positions, except for the least-significant bit, which is rotated to the most-significant bit location. The RCL and RCR instructions include the CF flag in the rotation. 
+    
+    > The RCL instruction shifts the CF flag into the least-significant bit and shifts the most-significant bit into the CF flag. The RCR instruction shifts the CF flag into the most-significant bit and shifts the least-significant bit into the CF flag. 
+
+    RCL、RCR 和 ROL、ROR的最大的区别就是是否要将进位参与到循环移位中，防止出错，最开始要将进位清零-CLC
