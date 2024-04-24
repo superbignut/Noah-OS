@@ -345,3 +345,111 @@
     > The RCL instruction shifts the CF flag into the least-significant bit and shifts the most-significant bit into the CF flag. The RCR instruction shifts the CF flag into the most-significant bit and shifts the least-significant bit into the CF flag. 
 
     RCL、RCR 和 ROL、ROR的最大的区别就是是否要将进位参与到循环移位中，防止出错，最开始要将进位清零-CLC
+
+
+21. 输入和输出
+
+    这里要涉及到VGA的一些内容，[osdev](https://wiki.osdev.org/VGA_Hardware)有介绍，但内容真的很多，就不打算深入进去了
+
+    >  The VGA has a lot (over 300!) internal registers, while occupying only a short range in the I/O address space. To cope, many registers are indexed. This means that you fill one field with the number of the register to write, and then read or write another field to get/set the actual register's value.
+
+    这句话的意思就是说，需要使用索引的方式来访问寄存器，一个用来放地址，一个用来放数据；有很多可以用的索引寄存器，其中
+
+    + CRT 地址端口 0x3d4
+
+    + CRT 数据端口 0x3d5
+
+    就是常用的索引寄存器，但为什么不是其他的，暂时不清楚，可能这个就是负责显示的吧，进而控制光标的位置
+
+    + 0x0E-光标位置高8位
+
+    + 0x0F-光标位置底8位
+
+    也就是需要将这两个索引号，放到索引-地址-寄存器，然后去写或者读相应的索引-数据-寄存器，即可控制光标
+
+    然后是要认清端口号的概念，intel手册卷1第19章：
+
+    > The processor’s I/O address space is separate and distinct from the physical-memory address space. The I/O address space consists of 216 (64K) individually addressable 8-bit I/O ports, numbered 0 through FFFFH. I/O port addresses 0F8H through 0FFH are reserved. Do not assign I/O ports to these addresses. The result of an attempt to address beyond the I/O address space limit of FFFFH is implementation-specific; see the Developer’s Manuals for specific processors for more details.
+
+    因此对于上面提到的端口号0x3d4，并不等同于内存地址0x3d4，很大的区别再于我们写入和读取使用的指令不是mov而是in/out：
+
+    > The register I/O instructions IN (input from I/O port) and OUT (output to I/O port) move data between I/O ports and the EAX register (32-bit I/O), the AX register (16-bit I/O), or the AL (8-bit I/O) register. The address of the I/O port can be given with an immediate value or a value in the DX register.
+
+    in 和 out 指令都是将数据从 port : dx 中读出或写入,但是允许使用的只限于AX , AL
+
+    + out
+    > Copies the value from the second operand (source operand) to the I/O port specified with the destination operand (first operand). The source operand can be register AL, AX, or EAX, depending on the size of the port being accessed (8, 16, or 32 bits, respectively); the destination operand can be a byte-immediate or the DX register. Using a byte immediate allows I/O port addresses 0 to 255 to be accessed; using the DX register as a source operand allows I/O ports from 0 to 65,535 to be accessed.
+    + in
+    > Copies the value from the I/O port specified with the second operand (source operand) to the destination operand (first operand). The source operand can be a byte-immediate or the DX register; the destination operand can be register AL, AX, or EAX, depending on the size of the port being accessed (8, 16, or 32 bits, respectively). Using the DX register as a source operand allows I/O port addresses from 0 to 65,535 to be accessed; using a byte immediate allows I/O port addresses 0 to 255 to be accessed.
+
+        CRT_ADDR_REG equ 0x3d4
+        CRT_DATA_REG equ 0x3d5
+        CRT_CURSOR_HIGH equ 0x0e    
+        CRT_CURSOR_LOW equ 0x0f
+
+        set_cursor:                 ;设置光标函数
+            ; ax传递参数
+            push dx
+            push bx
+            mov bx, ax              ; bx = ax
+
+            ;先设置地址寄存器，把光标索引地址传入
+            mov dx, CRT_ADDR_REG    
+            mov al, CRT_CURSOR_LOW
+            out dx, al              ;写入port：dx
+
+            ;再设置数据寄存器，把数据传入
+            mov dx, CRT_DATA_REG    
+            mov al, bl
+            out dx, al              ;set bl
+
+            mov dx, CRT_ADDR_REG
+            mov al, CRT_CURSOR_HIGH
+            out dx, al
+
+            mov dx, CRT_DATA_REG
+            mov al, bh
+            out dx, al              ;set bh
+            pop bx
+            pop dx
+            ret
+        get_cursor:                 ;获取光标函数
+            ; 结果存在ax
+            push dx
+            mov dx, CRT_ADDR_REG
+            mov al, CRT_CURSOR_HIGH
+            out dx, al
+
+            mov dx, CRT_DATA_REG
+            in al, dx               ; in data_port to al
+            shl ax, 8
+
+            mov dx, CRT_ADDR_REG
+            mov al, CRT_CURSOR_LOW
+            out dx, al
+
+            mov dx, CRT_DATA_REG
+            in al, dx
+            pop dx
+            ret
+    但是我这里总是会有部分光标无法显示出来，不知道为什么
+
+        print:
+            call get_cursor ;获取初始位置的光标
+
+            mov di, ax  ; ax: 0 1 2 3 4 5 光标显示的位置 * 2 + 0xb8000就是字符显示的位置
+
+            shl di, 1   ; 指向下一个非样式的显示位置 di = ax * 2: 0 2 4 6 8 10
+
+            mov bl, [ds:si]    ;获得字母h-e-l-l-o-,- -w-o-r-l-d
+
+            cmp bl, 0       ;与空字符进行比较
+            jz print_end
+
+            mov [es:di], bl ;将字符放进 0xb8000 + di
+            inc si
+            inc ax
+
+            call set_cursor ;设置新的光标
+            jmp print
+        print_end:

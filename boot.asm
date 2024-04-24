@@ -4,87 +4,95 @@
   
     int 0x10    ; clear screen
 
-    ;call [ds:test] 
-
-    xchg bx, bx
-    ;mov word [0x80 * 4], print
-    ;mov word [0x80 * 4 + 2], 0
-
-    
-    call far [ds:test]
-
-    int 0x80
-    
-    mov word [0x00 * 4], err ; register
-    mov word [0x00 * 4 + 2], 0 
-
-    mov ax, 1
-    mov dx, 0
-    mov bx, 0
-    div bx
-
-halt:                   
-    jmp halt            
-
-err:
-    push ax
-    push ds
-    push bx
-
     mov ax, 0xb800
+    mov es, ax
+
+    mov ax, 0x0
     mov ds, ax
-    mov bx, 0
 
-    mov byte [ds:bx], 'L'
+    mov si, message
 
-    pop bx
-    pop ds
-    pop ax
+    mov bx, 0x01
 
-    hlt
-    iret
 
 print:
-    
-    push cx
-    push ax 
-    push es
-    push ds
-    push si
-    push di
 
+    call get_cursor ;获取初始位置的光标
 
-    mov cx, message_end - message ; loop_i
+    mov di, ax  ; ax: 0 1 2 3 4 5 光标显示的位置 * 2 + 0xb8000就是字符显示的位置
 
-    mov ax, 0xb800              
-    mov es, ax  ; es = 0xb800
+    shl di, 1   ; 指向下一个非样式的显示位置 di = ax * 2: 0 2 4 6 8 10
 
-    mov ax, 0
-    mov ds, ax  ; ds = 0
+    mov bl, [ds:si]    ;获得字母h-e-l-l-o-,- -w-o-r-l-d
 
-    mov si, message ;
+    cmp bl, 0       ;与空字符进行比较
+    jz print_end
 
-    mov di, 0   ; di = 0
-    mov al, [ds:si] ; 把内容h放到al
+    mov [es:di], bl ;将字符放进 0xb8000 + di
+    mov byte [es:di+1], 0x4 ;红色
+    inc si
+    inc ax
 
-    mov [es:di], al ; 把al放到0xb8000
+    call set_cursor ;设置新的光标
+    jmp print
+print_end:
 
-    add si, 1
-    add di, 2
+halt:                   
+    jmp halt
 
-    pop di
-    pop si
-    pop ds
-    pop es
-    pop ax
-    pop cx
+CRT_ADDR_REG equ 0x3d4
+CRT_DATA_REG equ 0x3d5
+CRT_CURSOR_HIGH equ 0x0e    
+CRT_CURSOR_LOW equ 0x0f
+set_cursor:
+    ; ax传递参数
+    push dx
+    push bx
+    mov bx, ax              ; bx = ax
 
-    ; ret retf iret
-    iret
+    ;先设置地址寄存器，把光标索引地址传入
+    mov dx, CRT_ADDR_REG    ;port
+    mov al, CRT_CURSOR_LOW
+    out dx, al              ;out 
+
+    ;再设置数据寄存器，把数据传入
+    mov dx, CRT_DATA_REG    
+    mov al, bl
+    out dx, al              ;set bl
+
+    mov dx, CRT_ADDR_REG
+    mov al, CRT_CURSOR_HIGH
+    out dx, al
+
+    mov dx, CRT_DATA_REG
+    mov al, bh
+    out dx, al              ;set bh
+
+    pop bx
+    pop dx
+    ret
+
+get_cursor:
+    ; 结果存在ax
+    push dx
+    mov dx, CRT_ADDR_REG
+    mov al, CRT_CURSOR_HIGH
+    out dx, al
+
+    mov dx, CRT_DATA_REG
+    in al, dx               ; in data_port to al
+    shl ax, 8
+
+    mov dx, CRT_ADDR_REG
+    mov al, CRT_CURSOR_LOW
+    out dx, al
+
+    mov dx, CRT_DATA_REG
+    in al, dx
+    pop dx
+    ret
 message:
     db "hello, world", 0x00
-test:
-    dw print, 0
 message_end: 
 
     times 510 - ($ - $$) db 0   
