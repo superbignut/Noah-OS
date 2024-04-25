@@ -375,7 +375,7 @@
 
     > The register I/O instructions IN (input from I/O port) and OUT (output to I/O port) move data between I/O ports and the EAX register (32-bit I/O), the AX register (16-bit I/O), or the AL (8-bit I/O) register. The address of the I/O port can be given with an immediate value or a value in the DX register.
 
-    in 和 out 指令都是将数据从 port : dx 中读出或写入,但是允许使用的只限于AX , AL
+    in 和 out 指令都是将数据从 port : dx 中读出或写入,但是允许使用的寄存器只限于AX , AL
 
     + out
     > Copies the value from the second operand (source operand) to the I/O port specified with the destination operand (first operand). The source operand can be register AL, AX, or EAX, depending on the size of the port being accessed (8, 16, or 32 bits, respectively); the destination operand can be a byte-immediate or the DX register. Using a byte immediate allows I/O port addresses 0 to 255 to be accessed; using the DX register as a source operand allows I/O ports from 0 to 65,535 to be accessed.
@@ -392,21 +392,17 @@
             push dx
             push bx
             mov bx, ax              ; bx = ax
-
             ;先设置地址寄存器，把光标索引地址传入
             mov dx, CRT_ADDR_REG    
             mov al, CRT_CURSOR_LOW
             out dx, al              ;写入port：dx
-
             ;再设置数据寄存器，把数据传入
             mov dx, CRT_DATA_REG    
             mov al, bl
             out dx, al              ;set bl
-
             mov dx, CRT_ADDR_REG
             mov al, CRT_CURSOR_HIGH
             out dx, al
-
             mov dx, CRT_DATA_REG
             mov al, bh
             out dx, al              ;set bh
@@ -419,15 +415,12 @@
             mov dx, CRT_ADDR_REG
             mov al, CRT_CURSOR_HIGH
             out dx, al
-
             mov dx, CRT_DATA_REG
             in al, dx               ; in data_port to al
             shl ax, 8
-
             mov dx, CRT_ADDR_REG
             mov al, CRT_CURSOR_LOW
             out dx, al
-
             mov dx, CRT_DATA_REG
             in al, dx
             pop dx
@@ -436,20 +429,73 @@
 
         print:
             call get_cursor ;获取初始位置的光标
-
             mov di, ax  ; ax: 0 1 2 3 4 5 光标显示的位置 * 2 + 0xb8000就是字符显示的位置
-
             shl di, 1   ; 指向下一个非样式的显示位置 di = ax * 2: 0 2 4 6 8 10
-
             mov bl, [ds:si]    ;获得字母h-e-l-l-o-,- -w-o-r-l-d
-
             cmp bl, 0       ;与空字符进行比较
             jz print_end
-
             mov [es:di], bl ;将字符放进 0xb8000 + di
             inc si
             inc ax
-
             call set_cursor ;设置新的光标
             jmp print
         print_end:
+
+22. 外中断和时钟
+    
+    有很多概念第一次涉及到：
+
+    + PIC : 8259 Programmable Interrupt Controller 
+    > Every time the CPU is done with one machine instruction, it will check if the PIC's pin has notified an interrupt.    
+    
+    中断通过PIC 向CPU提交中断请求与中断向量，8259 PIC采用级联的方式，提供了15个中断，并通过数据线和命令线控制PIC
+
+    > Each chip (master and slave) has a command port and a data port (given in the table below). When no command is issued, the data port allows us to access the interrupt mask of the 8259 PIC.
+
+      + Master PIC - Command	0x0020  指令端口，用于ICW初始化和EOI等OCW命令
+
+      + Master PIC - Data	0x0021  数据端口，如果要写入mask也是这个端口
+
+      + Slave PIC - Command	0x00A0
+
+      + Slave PIC - Data	0x00A1
+    
+    对PIC的控制则包括，初始化，设置屏蔽字等, 工作流程：
+
+    > When the processor accepts the interrupt, the master checks which of the two PICs is responsible for answering, then either supplies the interrupt number to the processor, or asks the slave to do so. The PIC that answers looks up the "vector offset" variable stored internally and adds the input line to form the requested interrupt number. After that the processor will look up the interrupt address and act accordingly (see Interrupts for more details).
+
+    OSDEV的介绍还是不太全面，需要结合[8259手册](https://pdos.csail.mit.edu/6.828/2017/readings/hardware/8259A.pdf)进行查看:
+
+    手册上首页的框图给出了8259主要的结构：
+      + Inservice Reg - 存储cpu正在服务的中断
+      + Priority Resolver - 将IRR的最优先的中断传进ISR
+      + Interrupt Request Reg - 并带有IR0~IR7 共8个输入引脚，连接各中断设备， 表示有那些中断进入
+      + Inrerrupt Mask Reg - 屏蔽字
+      + Control Logic - 输入引脚INTA用来让CPU获取中断向量，输出引脚INT用于向CPU触发中断
+      + Data bus buffer - D0~D7 用于控制、状态、中断向量的数据的传输
+      + Read/Write Logic - 包括用于初始化的ICW寄存器s，用于控制的OCW寄存器s
+      + Cascade Buffer - 级联功能
+
+    > The interrupts at the IR input lines are handled by two registers in cascade, the Interrupt Request Register (IRR) and the In-Service (ISR). The IRR is used to store all the interrupt levels which are requesting service; and the ISR is used to store all the interrupt levels which are being serviced.
+
+
+    看了OSDEV下面的参考链接，大致包括：顺序的初始化ICW1~4,OCW1写屏蔽字，OCW2写EOI，但是很多地方很不理解
+
+      + 首先是初始化并不是必须的，up在没有初始化的情况下，直接写屏蔽字也没有问题
+      + 中断向量表和这个8259好像还是冲突的，如果在不初始化的情况下，IRQ0计数器中断用的就是0x08的中断向量，这块区域貌不应该动
+      + ICW的初始化还是顺序执行的，也就是对一个端口进行多次的out
+      + OCW2的写EOI(End of Interrupt)操作，out的第一个参数同样是0x20，0x20指令端口执行的是那个指令不仅和指令有关，还和指令触发的时间有关
+
+    然后是sti和cli指令：
+
+    > In most cases, STI sets the interrupt flag (IF) in the EFLAGS register. This allows the processor to respond to maskable hardware interrupts. If IF = 0, maskable hardware interrupts remain inhibited on the instruction boundary following an execution of STI. (The delayed effect of this instruction is provided to allow interrupts to be enabled just before returning from a procedure or subroutine. For instance, if an STI instruction is followed by an RET instruction, the RET instruction is allowed to execute before external interrupts are recognized. No interrupts can be recognized if an execution of CLI immediately follow such an execution of STI.) The inhibition ends after delivery of another event (e.g., exception) or the execution of the next instruction.
+
+    也就是说sti指令会set可屏蔽中断的标志位if，因此允许接受可屏蔽的中断，并且在中断函数的执行过程中，会有cs、ip、flag进栈。并且这时的flag的if位又变成了unset的状态。
+
+    所以总结一下就是：
+      + sti可以打开eflag中cpu对可屏蔽中断的响应
+      + 8259的mask会屏蔽来自设备的中断
+      + 当8259中断一次后，所有中断都会被mask，发送EOI会解除这些mask
+    
+    
+23. 
