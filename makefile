@@ -1,27 +1,27 @@
 .PHONY: bochs
-bochs: master.img
-	bochs -q
+bochs: build/master.img
+	cd build && bochs -q
 
-master.img:	boot.bin
-ifeq ("$(wildcard master.img)", "")
+build/master.img:	build/boot.bin
+ifeq ("$(wildcard build/master.img)", "")
 	bximage -func=create -hd=16M -imgmode=flat -sectsize=512 $@ -q
 endif
 	dd if=$< of=$@ bs=512 count=1 conv=notrunc
 
 
-%.bin:	%.asm
+build/%.bin: src/%.asm
 	nasm $< -o $@ 
 
-master.vdi: master.img
-	qemu-img convert -f raw -O vdi master.img master.vdi
+master.vdi: build/master.img
+	qemu-img convert -f raw -O vdi build/master.img build/master.vdi
 
 .PHONY: clean
 clean:
-ifeq ("$(wildcard *.bin)$(wildcard *.img)$(wildcard *.vdi)", "")
+ifeq ("$(wildcard build/*.bin)$(wildcard build/*.img)$(wildcard build/*.vdi)", "")
 	@echo "Nothing be removed."
 else
-	@echo "$(wildcard *.bin) $(wildcard *.img) $(wildcard *.vdi) have been removed."
-	rm *.bin *.vdi *.lock *.img 2> /dev/null || true
+	@echo "$(wildcard build/*.bin) $(wildcard build/*.img) $(wildcard build/*.vdi) have been removed."
+	rm build/*.bin build/*.vdi build/*.lock build/*.img 2> /dev/null || true
 endif
 	
 	

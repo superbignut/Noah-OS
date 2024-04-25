@@ -276,7 +276,7 @@
 
     > ####OF DF IF TF SF ZF # AF # PF # CF  
 
-17. x86 条件转移指令
+17. x86 条件转移指令      
 
     start:
         jump short start 
@@ -498,4 +498,44 @@
       + 当8259中断一次后，所有中断都会被mask，发送EOI会解除这些mask
     
     
-23. 
+23. 硬盘读写
+
+    对ATA的介绍OSDEV中并不是那么完善，比如当要写0x1f7时，命令的种类在[OSDEV：ATA](https://wiki.osdev.org/ATA_PIO_Mode)中就没有详细的介绍，
+    并且对于28和48两种类型的LBA的区分也没有提及。
+    
+    更细节的介绍参考[ATA标准手册](http://ebook.pldworld.com/_eBook/ATA%20spec/ATA7_Spec.pdf)，比如第6章的指令介绍：
+
+    + 6.16节 IDENTIFY DEVICE 0xEC
+    + 6.35节 READ SECTORS 0x20
+    + 6.67节 WRITE SECTORS 0x30
+    
+    下面是master硬盘驱动的端口号，范围是： 0x1f0 - 0x1f7 
+    + 0x1f1 错误寄存器， 暂不使用
+    + 0x1f2 要读写的扇区的数量
+    + 0x1f3 ~ 0x1f5 LBA的情况下是扇区号的前24位：0-23 分别是 low-mid-high
+    + 0x1f6 
+      + 0 ~ 3 LBA扇区号的24-27位
+      + 4 drive-number : 0->master ; 1 -> slave 用来选择硬盘
+      + 6 :  0 -> chs; 1->lba 用来选择方式，如果是lba，指令则可以使用28和48两种
+      + 5,7: 固定是 1
+    + 0x1f7
+      + 写入的情况，也就是命令寄存器：
+        + 0xEC : 识别硬盘
+        + 0x20 : 读硬盘
+        + 0x30 : 写硬盘
+      + 读取的情况，也就是状态寄存器：
+        + 0 ERR
+        + 1,2 ： 0
+        + 3 DRQ  数据准备完毕 Set when the drive has PIO data to transfer, or is ready to accept PIO data. 
+        + 4 SRV
+        + 5 DF
+        + 6 RDY
+        + 7 BUSY 硬盘繁忙 Indicates the drive is preparing to send/receive data.
+
+    代码写完后有一些疑问：
+       1. nop指令
+
+       2. 什么时候需要nop     
+        
+       3. 硬盘是怎么判断我成功读了一个字节，并准备下一个字节的
+       

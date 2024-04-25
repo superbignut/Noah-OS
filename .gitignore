@@ -3,7 +3,6 @@
 **/*.rs~
 **/*\#
 .vscode/
-build/
 ORANGE_OS/
 **/*.bin
 **/*.vdi
