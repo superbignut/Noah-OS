@@ -503,12 +503,14 @@
     对ATA的介绍OSDEV中并不是那么完善，比如当要写0x1f7时，命令的种类在[OSDEV：ATA](https://wiki.osdev.org/ATA_PIO_Mode)中就没有详细的介绍，
     并且对于28和48两种类型的LBA的区分也没有提及。
     
-    更细节的介绍参考[ATA标准手册](http://ebook.pldworld.com/_eBook/ATA%20spec/ATA7_Spec.pdf)，比如第6章的指令介绍：
+    更细节的介绍参考[ATA标准手册](http://ebook.pldworld.com/_eBook/ATA%20spec/ATA7_Spec.pdf)，比如第6章的指令介绍，
 
     + 6.16节 IDENTIFY DEVICE 0xEC
     + 6.35节 READ SECTORS 0x20
     + 6.67节 WRITE SECTORS 0x30
     
+    卷二中更是提到的400ns的出处，还有很多状态转移框图，如果深入学习的话，都需要看一下
+
     下面是master硬盘驱动的端口号，范围是： 0x1f0 - 0x1f7 
     + 0x1f1 错误寄存器， 暂不使用
     + 0x1f2 要读写的扇区的数量
@@ -534,8 +536,53 @@
 
     代码写完后有一些疑问：
        1. nop指令
+       > This instruction performs no operation. It is a one-byte or multi-byte NOP that takes up space in the instruction stream but does not impact machine context, except for the EIP register.
+
+       但是具体会耗时多少的细节没有提及,而是google的说法都是不建议用nop作为延迟，做延迟的话也是1/f级别的延迟
 
        2. 什么时候需要nop     
-        
+
+       OSDEV上的说法是，每次发送一个指令后，都需要等待一段时间：
+       >Which means that a drive select may always happen just before a status read. This is bad. Many drives require a little time to respond to a "select", and push their status onto the bus. 
+
        3. 硬盘是怎么判断我成功读了一个字节，并准备下一个字节的
        
+       这里也没有找到，这个应该也是在ATA标准中，而且就比如在read的循环中:
+                
+            .check_read_state:  ; 选择扇区后要延迟一下
+                nop
+                nop
+                nop
+                in al, dx ; 0x1f7
+                and al, 0b1000_1000
+                cmp al, 0b0000_1000
+                jnz .check_read_state
+
+            mov ax, 0x100   ; 把数据读到0x1000
+            mov es, ax
+            mov di, 0
+            mov dx, 0x1f0
+
+            read_loop:          ;读取数据
+                nop
+                nop
+                nop
+                in ax, dx
+                mov [es:di], ax
+                add di, 2
+                cmp di, 512
+                jnz read_loop
+            xchg bx, bx
+        
+    读取数据之前即使没有确认数据准备完毕，也可以进行写一个字的读取，这个时序猜测是硬件规范中规定的，并且这里如果硬盘响应的比cpu的频率慢，肯定的是会出错的
+
+24. 内核加载器
+
+    用到了pushad，popad指令
+    > Push EAX, ECX, EDX, EBX, original ESP, EBP, ESI, and EDI.
+
+    然后就是再次套娃，用内存中的MBR再将一个新的更大容量的数据读入内存
+
+    1. BIOS 加载512字节的 MBR 进入内存
+    2. 内存中的 MBR 加载 更大体积的 loader 进入内存
+

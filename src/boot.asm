@@ -10,25 +10,48 @@
 
     ;xchg bx, bx
 
-;将 0 -> 0x1000
+    mov edi, 0x1000
+    mov ecx, 2
+    mov bl, 4
 
-    mov dx, 0x1f2 ; 读写扇区的数量
-    mov al, 1
+    call read_disk
+
+    xchg bx, bx
+
+    jmp 0:0x1000
+halt:                   
+    jmp halt
+
+
+read_disk:
+    pushad          ;eax, ecx, ebx, edx, esp, ebp, esi, edi 这里如果是16位的栈的话，32位寄存器会压两次
+    push es        
+    ;读取硬盘
+    ; edi - 把读取到的数据，在内存中存放的位置 edi - 32
+    ; ecx - 读取数据在硬盘中的扇区位置-lba
+    ; bl 扇区数量
+    mov dx, 0x1f2 
+    mov al, bl      ; 读写扇区的数量
     out dx, al
 
-    mov al, 0       ; 读取第0个扇区 low = 0
+    mov al, cl      ; 读取第0个扇区 low
     mov dx, 0x1f3
     out dx, al
 
-    mov al, 0       
-    mov dx, 0x1f4   ; mid = 0
+    shr ecx, 8
+    mov al, cl
+    mov dx, 0x1f4   ; mid
     out dx, al
 
+    shr ecx, 8
     mov al, 0
-    mov dx, 0x1f5   ; high = 0
+    mov dx, 0x1f5   ; high
     out dx, al
 
+    shr ecx, 8
+    and cl, 0b0000_1111
     mov al, 0b1110_0000
+    or al, cl
     mov dx, 0x1f6       ;master + lba
     out dx, al
 
@@ -45,78 +68,31 @@
         cmp al, 0b0000_1000
         jnz .check_read_state
 
-    mov ax, 0x100   ; 把数据读到0x1000
+    mov ax, 0
     mov es, ax
-    mov di, 0
-    mov dx, 0x1f0
 
-    read_loop:          ;读取数据
+    xor eax, eax
+    mov al, bl
+    mov dx, 256
+    mul dx      ;al = al * 256 字， 因为一次读取两个字节
+
+    mov dx, 0x1f0
+    mov cx, ax  ;loop
+
+    .read_loop:          ;读取数据
         nop
         nop
         nop
         in ax, dx
-        mov [es:di], ax
+        mov [es:edi], ax
         add di, 2
-        cmp di, 512
-        jnz read_loop
-    xchg bx, bx
 
+        loop .read_loop
 
-    mov dx, 0x1f2 ;
-    mov al, 1
-    out dx, al
+    pop es
+    popad
 
-    mov al, 2   ; 第 2 + 1个扇区 LBA 把数据写到硬盘第三个扇区 去master.img 0x400处查看，
-    mov dx, 0x1f3   ; 不是在内存里，而是硬盘
-    out dx, al
-
-    mov al, 0
-    mov dx, 0x1f4
-    out dx, al
-
-    mov al, 0
-    mov dx, 0x1f5
-    out dx, al
-
-    mov al, 0b1110_0000
-    mov dx, 0x1f6
-    out dx, al
-
-    mov al, 0x30    ; write sectors command
-    mov dx, 0x1f7
-    out dx, al
-
-    mov ax, 0x100
-    mov es, ax
-    mov di, 0
-    mov dx, 0x1f0
-
-    write_loop:
-        nop
-        nop
-        nop
-
-        mov ax, [es:di]
-        out dx, ax  ; 把es:di的数据写到dx端口
-
-        add di, 2
-        cmp di, 512
-        jnz write_loop  ;写512个字节
-
-    mov dx, 0x1f7
-    .check_write_state:
-        nop
-        nop
-        nop
-        in al, dx ; 0x1f7
-        and al, 0b1000_0000
-        cmp al, 0b1000_0000
-        jz .check_write_state    ;不繁忙跳转， 也就是写完了的意思
-    xchg bx, bx
-
-halt:                   
-    jmp halt
-
+    ret
     times 510 - ($ - $$) db 0   
 
     db 0x55, 0xaa 
