@@ -586,3 +586,49 @@
     1. BIOS 加载512字节的 MBR 进入内存
     2. 内存中的 MBR 加载 更大体积的 loader 进入内存
 
+25. 32位架构-实模式和保护模式
+
+    > The memory management facilities of the IA-32 architecture are divided into two parts: segmentation and paging. Segmentation provides a mechanism of isolating individual code, data, and stack modules so that multiple programs (or tasks) can run on the same processor without interfering with one another. Paging provides a mechanism for implementing a conventional demand-paged, virtual-memory system where sections of a program’s execution environment are mapped into physical memory as needed. Paging can also be used to provide isolation between multiple tasks. When operating in protected mode, some form of segmentation must be used. There is no mode bit to disable segmentation. The use of paging, however, is optional.
+
+    保护模式和实模式的一个很大的区别就是，他们的内存管理方式。实模式的时候，一直在使用段+偏移的方式来操作1Mb的地址;但是在保护模式下，还可以采用分页的方式进一步的管理地址的使用，使用的似乎就是MMU;
+
+    如同上面的从[intel手册第三卷第三章](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)提到的，分段是为了隔离不同程序的代码和数据（因此8086的分段和这里的分段就不再是同一个目的了，8086是为了用16根地址线访问20位的地址 ; 而分页是为了提供虚拟内存，并进行了一个逻辑地址到物理地址的转换。
+
+    这也就对应上了408中忘了是计组还是os的内容了。原来出处在这里，以后再来看。
+
+    [nasm : section](https://www.nasm.us/xdoc/2.13.02rc3/html/nasmdoc7.html)
+
+    section 的作用似乎就是进行对齐操作，并且对于不同的输出格式，也有不同的意义：
+
+    + 7.1.2 bin Extensions to the SECTION Directive
+
+    > The bin output format extends the SECTION (or SEGMENT) directive to allow you to specify the alignment requirements of segments. This is done by appending the ALIGN qualifier to the end of the section-definition line. For example,
+
+    + 7.9.2 elf extensions to the SECTION Directive
+
+    > Like the obj format, elf allows you to specify additional information on the SECTION directive line, to control the type and properties of sections you declare. Section types and properties are generated automatically by NASM for the standard section names, but may still be overridden by these qualifiers. 
+
+    + section .text    progbits  alloc   exec    nowrite  align=16 
+    
+    + section .data    progbits  alloc   noexec  write    align=4 
+    
+    + section .bss     nobits    alloc   noexec  write    align=4 
+    
+    可以看到 elf 格式与 bin 格式相比，还多了属性上的约束,但是还不确定这些约束，比如可写、不可写是在编译阶段检查的吗？还是执行阶段？这里可以尝试写一下 section .text
+
+    尝试了一下，如果写只读区域，会导致 core dump 的 error出现，所以猜测应该是将只读的section 放到特定的内存上，每当写只读区域的时候就会触发报错。
+
+
+    [nasm : extern](https://www.nasm.us/xdoc/2.11.08/html/nasmdoc6.html)
+
+    > EXTERN is similar to the MASM directive EXTRN and the C keyword extern: it is used to declare a symbol which is not defined anywhere in the module being assembled, but is assumed to be defined in some other module and needs to be referred to by this one. Not every object-file format can support external variables: the bin format cannot.
+
+    [nasm : global](https://www.nasm.us/xdoc/2.11.08/html/nasmdoc6.html)
+
+    > GLOBAL is the other end of EXTERN: if one module declares a symbol as EXTERN and refers to it, then in order to prevent linker errors, some other module must actually define the symbol and declare it as GLOBAL. Some assemblers use the name PUBLIC for this purpose.The GLOBAL directive applying to a symbol must appear before the definition of the symbol.
+
+    extern 和 global 需要结合使用，任何使用extern的地方都需要找到，定义它为global的地方，进而进行链接操作
+
+    [lea 指令]()
+    
+    暂时还不太理解，待完成

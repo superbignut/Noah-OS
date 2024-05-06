@@ -10,7 +10,7 @@
 
     ;xchg bx, bx
 
-    mov edi, 0x1000
+    mov edi, 0x1000 ; 将硬盘的第2个扇区(lba=2)开始的4个扇区，移到0x1000位置
     mov ecx, 2
     mov bl, 4
 
@@ -27,8 +27,8 @@ read_disk:
     pushad          ;eax, ecx, ebx, edx, esp, ebp, esi, edi 这里如果是16位的栈的话，32位寄存器会压两次
     push es        
     ;读取硬盘
-    ; edi - 把读取到的数据，在内存中存放的位置 edi - 32
-    ; ecx - 读取数据在硬盘中的扇区位置-lba
+    ; es:edi - 把读取到的数据，在内存中存放的位置 edi
+    ; ecx - 读取的原始数据在硬盘中的扇区位置-lba
     ; bl 扇区数量
     mov dx, 0x1f2 
     mov al, bl      ; 读写扇区的数量
@@ -93,6 +93,7 @@ read_disk:
     popad
 
     ret
-    times 510 - ($ - $$) db 0   
 
-    db 0x55, 0xaa 
+times 510 - ($ - $$) db 0   
+
+db 0x55, 0xaa 

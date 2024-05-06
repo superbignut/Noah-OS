@@ -17,6 +17,14 @@ build/%.bin: src/%.asm
 master.vdi: build/master.img
 	qemu-img convert -f raw -O vdi build/master.img build/master.vdi
 
+# 使用c语言输出 hello world
+hello: test/hello.c
+	cd test && gcc -m32 -S hello.c -o hello.s && gcc -m32 hello.o -o hello 
+	
+# 使用汇编调用linux系统调用，输出 hello world
+hello-nasm: test/hello.asm
+	cd test && nasm -f elf32 hello.asm && gcc -m32 hello.o -o hello
+
 .PHONY: clean
 clean:
 ifeq ("$(wildcard build/*.bin)$(wildcard build/*.img)$(wildcard build/*.vdi)", "")
