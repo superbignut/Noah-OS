@@ -631,4 +631,14 @@
 
     [lea 指令]()
     
-    暂时还不太理解，待完成
+    > Computes the effective address of the second operand (the source operand) and stores it in the first operand(destination operand). The source operand is a memory address (offset part) specified with one of the processorsaddressing modes; the destination operand is a general-purpose register. The address-size and operand-size attributes affect the action performed by this instruction,
+
+    + lea eax, [eax+2*eax]
+
+    lea的第二个操作数是一个内存地址的偏移，也就是把[ ]中的值放入eax中 
+
+    + mov eax, [eax+2*eax] 
+
+    则是取出 eax+2*eax 内存地址中的值放入 eax
+
+    所以说，结合来看，lea的括号和mov的括号的理解好像不太一样？

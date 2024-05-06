@@ -25,7 +25,7 @@ section .text
     mov es, ax
 
     xchg bx, bx
-    lea ebx, tmessage   
+    lea ebx, [tmessage]   
 
     mov byte [es:ebx], 1
 
