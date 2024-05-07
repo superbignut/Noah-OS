@@ -8,21 +8,37 @@
     mov ss, ax
     mov sp, 0x7c00
 
-    ;xchg bx, bx
-
     mov edi, 0x1000 ; 将硬盘的第2个扇区(lba=2)开始的4个扇区，移到0x1000位置
     mov ecx, 2
     mov bl, 4
-
+    
+    ;xchg bx, bx
+    
     call read_disk
 
-    xchg bx, bx
+    ;xchg bx, bx
+
+    
+    ;mov word [0x80 * 4], print  ;ip
+    ;mov word [0x80 * 4 + 2], 0  ;cs
+    
+    ;xchg bx, bx    
+    ;int 0x80
+    ;xchg bx, bx  
 
     jmp 0:0x1000
 halt:                   
     jmp halt
 
-
+print:
+    push ax
+    push es
+    mov ax, 0xb800
+    mov es, ax
+    mov byte [es:0], "L"
+    pop es
+    pop ax
+    iret
 read_disk:
     pushad          ;eax, ecx, ebx, edx, esp, ebp, esi, edi 这里如果是16位的栈的话，32位寄存器会压两次
     push es        
@@ -52,47 +68,58 @@ read_disk:
     and cl, 0b0000_1111
     mov al, 0b1110_0000
     or al, cl
-    mov dx, 0x1f6       ;master + lba
+    mov dx, 0x1f6       ;master + lba_high_4
     out dx, al
 
     mov al, 0x20    ; read sectors command 0x20
     mov dx, 0x1f7
     out dx, al
 
-    .check_read_state:  ; 选择扇区后要延迟一下，并不是每次读取时都要检查
-        nop
-        nop
-        nop
-        in al, dx ; 0x1f7
-        and al, 0b1000_1000
-        cmp al, 0b0000_1000
-        jnz .check_read_state
+    xor ecx, ecx
+    mov cl, bl
 
-    mov ax, 0
-    mov es, ax
-
-    xor eax, eax
-    mov al, bl
-    mov dx, 256
-    mul dx      ;al = al * 256 字， 因为一次读取两个字节
-
-    mov dx, 0x1f0
-    mov cx, ax  ;loop
-
-    .read_loop:          ;读取数据
-        nop
-        nop
-        nop
-        in ax, dx
-        mov [es:edi], ax
-        add di, 2
-
-        loop .read_loop
+    .read:
+        push cx     ; cx was changed in .read_sector
+        call .wait_sector   ; wait every read.
+        call .read_sector
+        pop cx
+        loop .read
 
     pop es
     popad
-
     ret
+
+    .wait_sector:
+        mov dx, 0x1f7
+        .check_read_state:  ; 选择扇区后要延迟一下，并不是每次读取时都要检查
+            nop
+            nop
+            nop
+            in al, dx ; 0x1f7
+            and al, 0b1000_1000
+            cmp al, 0b0000_1000
+            jnz .check_read_state
+        ret
+
+
+    .read_sector:
+        mov dx, 0x1f0
+        mov cx, 256     ;loop one sector
+        mov ax, 0
+        mov es, ax      ; es set 0
+
+        .read_loop:          ;读取数据
+            nop
+            nop
+            nop
+            in ax, dx   ; port = dx read port:dx to ax.
+            mov [es:edi], ax    ; read to es:edi
+            add di, 2
+
+            loop .read_loop
+        ret
+
+
 
 times 510 - ($ - $$) db 0   
 

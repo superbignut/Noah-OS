@@ -119,7 +119,7 @@
     这个手册里可以找到好多教科书上的内容和设计，但没有看到显卡的地址说明，可能还要继续仔细的读一下....
 
     查了google, 0xB8000 似乎就是一个在某种模式下的显示器会读取的 80 * 25 * 2 = 4000 bytes 首地址,有待进一步学习。
-    +   这里在OSDEV的[Memory map](https://wiki.osdev.org/Memory_Map_(x86))中有提到;
+    + 这里在OSDEV的[Memory map](https://wiki.osdev.org/Memory_Map_(x86))中有提到;
     + 在[BDA - BIOS Data Area - PC Memory Map](https://stanislavs.org/helppc/bios_data_area.html),也有给出详细的从0x0000到0xFFFF:E的所有地址的用途。
     + 在踌躇月光的[x86视频02](https://www.bilibili.com/video/BV1b44y1k7mT?p=2&vd_source=5ad68ece2cc478b800d0c26152ca85c7)中也给出了更详细的地址布局，但不太清除出处。
     + 在踌躇月光的[x86视频03](https://www.bilibili.com/video/BV1b44y1k7mT?p=3&spm_id_from=pageDriver&vd_source=5ad68ece2cc478b800d0c26152ca85c7)中介绍到了0x7c00=31kB地址的历史，具体好像还要追溯到IBM-PC-5150, 待扩充
@@ -317,6 +317,8 @@
     
     在intel手册V1-Chapter6和INC指令处有介绍调用、异常和中断
 
+    + int 指令
+    
     > The INT n instruction generates a call to the interrupt or exception handler specified with the destination operand (see the section titled “Interrupts and Exceptions” in Chapter 6 of the Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 1). The destination operand specifies a vector from 0 to 255, encoded as an 8-bit unsigned intermediate value. Each vector provides an index to a gate descriptor in the IDT. The first 32 vectors are reserved by Intel for system use. Some of these vectors are used for internally generated exceptions.
 
 
@@ -328,6 +330,7 @@
 
             mov word [0x80 * 4], print  ;ip
             mov word [0x80 * 4 + 2], 0  ;cs
+            int 0x80                    ;调用自定义中断
 
     然后就是，有时需要显示使用 call far 指令才是callf
 
@@ -642,3 +645,30 @@
     则是取出 eax+2*eax 内存地址中的值放入 eax
 
     所以说，结合来看，lea的括号和mov的括号的理解好像不太一样？
+
+26. 内存检测
+
+    + 这里其实有一个问题就是，bios 需要检测内存、硬盘等各种硬件设备，并将MBR的512个字节加载进入内存，所以我在MBR里面就不再需要重复这些操作了吗？
+    
+    + 第二个疑惑是，bios中断函数，也就是0x000-0x3FF这1KB的空间中的256的中断向量表的初始数据是谁写进去的呢? 就比如0x10, 0x15还有他们对应的中断处理函数，也是bios写的吗?
+
+    + bios 0x15 0xe820 获取内存布局 是否可用
+
+    + address range descriptor structure ards
+    
+    
+    + 16 ： 内存的类型 type 是否可以被使用
+    
+    + 0x15 调用前的输入 
+      + eax 用来选择子功能
+      + ebx 
+      + es di 存入的区域
+      + ecx
+      + edx
+    
+    + 返回值
+      + cf
+      + eax
+      + esdi
+      + ecx
+      + edx
