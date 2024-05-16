@@ -234,6 +234,34 @@
 
     > A programmer may specify that either BX or BP is to serve as a base register whose content is to be used in the EA computation. Similarly, either SI or DI may be specified as an index register.
 
+    这里进行补充一下,虽然很多听起来很复杂的寻值名词，但是参考手册2.8节的图2-34给出了寻值的总体样貌:
+        
+        cs/ds/ss/es + bx/bp/si/di || (bx/bp + si/di) + displacement
+
+    虽然主要就是这三部分组成。但是实际在使用指令比如mov的时候，还是很乱，比如：
+
+        mov ax, es:[bx]
+        mov ax, [es:bx]
+        mov ax, [bx]
+    这三个似都是可以编译的，如下：
+
+        0000104a: (                    ): mov ax, word ptr es:[bx]  ; 268b07
+        0000104d: (                    ): mov ax, word ptr es:[bx]  ; 268b07
+        00001050: (                    ): mov ax, word ptr ds:[bx]  ; 8b07
+
+    可以发现前两个竟然是一样的，因此大概明白了
+
+    此外还有就是当es/ds/ss/cs为目的操作数时，源操作数一定得是寄存器，记住就好
+
+    然后就是实模式的2^20字节的寻值的限制，如果访问超过这个范围的地址，会被报错：
+
+        mov eax, 0xf000
+        mov es, eax
+        mov ebx, 0xffff # 0x1ffff就会报错
+        mov al, [es:ebx]
+        
+
+
 16. x86-算术运算指令
 
     + add
@@ -646,6 +674,14 @@
 
     所以说，结合来看，lea的括号和mov的括号的理解好像不太一样？
 
+    在第[第3卷第21章]()也有介绍，手册里把实模式叫做“REAL-ADDRESS MODE”
+
+    然后就是有一个误区，并不是在实模式下就不能访问32位的寄存器，比如eax，ebx这些，比如在bochs中模拟的32位x86，我们仍然可以使用e开头的这些寄存器。
+    
+    + 16位的限制似乎只体现在，我们在访存的时侯，用的cs/ds/ss/es是16位的，并且只能访问1Mb的空间。
+
+    + 对于保护模式中，段寄存器似乎就被抛弃了，这时候32根线就是4GB的内存
+
 26. 内存检测
 
     1. 这里其实有一个问题就是，bios 需要检测内存、硬盘等各种硬件设备，并将MBR的512个字节加载进入内存，所以我在MBR里面就不再需要重复这些操作了吗？
@@ -671,15 +707,15 @@
   
 	  + ES:DI	Buffer Pointer	Pointer to an  Address Range Descriptor	structure which the BIOS is to fill in.
 	  + ECX	Buffer Size	The length in bytes of the structure passed	to the BIOS.  The BIOS will fill in at most ECX bytes of the structure or however much of the structure the BIOS implements.  The minimum size which must be supported by both the BIOS and the caller is 20 bytes.  Future implementations may extend this structure.
-	+ 输入:
-	  + EDX	Signature	'SMAP' -  Used by the BIOS to verify the
-				caller is requesting the system map
+	  + EDX	Signature	'SMAP' -  Used by the BIOS to verify the caller is requesting the system map
 				information to be returned in ES:DI.
+	+ 输入:
+	  + EAX 固定的
 
       + EBX 每次都使用上层调用之后的返回值，初始化是0
       + ES：DI 指向一个输出地址吗？
       + ECX 指定了最大的字节数，最小是20
-      + EDX 验证的签名？
+      + EDX 验证的签名 SMAP字母的ascii
     + Output:
 	  + CF Carry Flag   Non-Carry - indicates no error
 	  + EAX	Signature	'SMAP' - Signature to verify correct BIOS revision.
@@ -689,7 +725,7 @@
 
     + 输出:
       + CF 标志是否发生错误
-      + EAX 用于验证BIOS版本?
+      + EAX 把字符串又返了回来
       + ES:DI 不变
       + ECX 返回填入的实际字节数
       + EBX 当最后一次调用时，EBX是0或者体现在CF上
@@ -710,3 +746,9 @@
     
       + 某些特殊的地址不会被返回
       + 某些地址应该由OS来尽行检测也不返回
+    
+    +  这里在写'SMAP'的时候，如果直接写 
+       +  mov eax, 'SMAP' 实际上move的是0x50414d53,也就是编译器把S放在了低位，因此int会触发CF报错
+       +  mov eax, 0x534d4150 得到的与上面的相反，是正确的写法
+   + jc 指令  
+        > Jump short if carry (CF=1). 

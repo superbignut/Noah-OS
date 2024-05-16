@@ -6,13 +6,13 @@
     mov ax, 0
     mov ds, ax
     mov ss, ax
+    mov es, ax
     mov sp, 0x7c00
 
     mov edi, 0x1000 ; 将硬盘的第2个扇区(lba=2)开始的4个扇区，移到0x1000位置
     mov ecx, 2
     mov bl, 4
     
-    ;xchg bx, bx
     
     call read_disk
 
