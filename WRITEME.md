@@ -794,3 +794,61 @@
             ards_buffer: 
 
         有个问题是,在读取ards数据的时候,只读取了底32位,这里其实理解一下可以知道,32位能表示的数字其实是很恐怖的,以地址来说,32位是4G的内存指针,内存检测应该也检测不到这么大的范围之外吧暂时,在以后说不定会用的到高32位
+
+27. 保护模式
+    
+    最先看[第三卷2.1-overview](), 这样可以对整体逻辑有清除的认识：
+
+    > When operating in protected mode, all memory accesses pass through either the global descriptor table (GDT) or an optional local descriptor table (LDT) as shown in Figure 2-1. These tables contain entries called segment descriptors. Segment descriptors provide the base address of segments well as access rights, type, and usage information.
+
+    > Each segment descriptor has an associated segment selector. A segment selector provides the software that uses it with an index into the GDT or LDT (the offset of its associated segment descriptor), a global/local flag (deter-mines whether the selector points to the GDT or the LDT), and access rights information.
+
+    2.1.1第一句话就直接给出了保护模式下的内存访问方式：
+
+        memory-access -> GDT/LDT -> segment selector -> segment descriptors 
+
+    > Protected mode is the main operating mode of modern Intel processors (and clones) since the 80286 (16 bit). On 80386s and later, the 32 bit Protected Mode allows working with several virtual address spaces, each of which has a maximum of 4GB of addressable memory; and enables the system to enforce strict memory and hardware I/O protection as well as restricting the available instruction set via Rings.
+
+    这里提到了ring可能以后要留意一下
+
+    > A CPU that is initialized by the BIOS starts in Real Mode. Enabling Protected Mode unleashes the real power of your CPU. However, it will prevent you from using most of the BIOS interrupts, since these work in Real Mode (unless you have also written a V86 monitor).
+
+    提升性能，但是禁止了一些中断，有一些操作需要来打开保护模式：
+
+    Before switching to protected mode, you must:
+
+    1. Disable interrupts, including NMI (as suggested by Intel Developers Manual).
+    2. Enable the A20 Line.
+    3. Load the Global Descriptor Table with segment descriptors suitable for code, data, and stack.
+
+    Whether the CPU is in Real Mode or in Protected Mode is defined by the lowest bit of the CR0 or MSW register.
+
+    进步进入保护模式是从硬件上判断的
+
+    > Paging supports a “virtual memory” environment where a large linear address space is simulated with a small amount of physical memory (RAM and ROM) and some disk storage. 
+
+    使用 RAM+ROM+DISK 来虚拟化线性地址空间
+
+    > When a program (or task) attempts to access an address location in the linear address space, the processor uses the page directory and page tables to translate the linear address into a physical address and then performs the requested operation (read or write) on the memory location
+
+    因此就需要一个页表来对虚拟地址到物理地址进行转换工作，进而如果所需要的page不在内存中，就会触发中断从硬盘把page读出来
+
+    段访问有三种方式，分别对应了三种由低到高的硬件层面的保护：
+       + basic-flat-model                
+       + Protected Flat Model
+       + Multi-Segment Model
+
+    地址回绕- [memory wraparound](https://wiki.osdev.org/A20_Line)
+
+    按道理来讲，如果我超出了 0xf_ffff 的话，环回后的地址应该就是 :
+            
+        address - 0xf_ffff -1   # 新的地址
+
+    但是我总是环回不成功, 就是找不到0xee被写到哪里去了
+
+        mov ax, 0xf000
+        mov es, ax
+        mov edi, 0x0000_ffff
+        mov bx, 0x05ff
+
+        mov byte [es : di + bx], 0xee # 可能还是哪里存在问题吧 
