@@ -852,3 +852,11 @@
         mov bx, 0x05ff
 
         mov byte [es : di + bx], 0xee # 可能还是哪里存在问题吧 
+
+    +  A20 - 0x92 
+    +  Protect Enable PE位 - cr0 
+
+    + lgdt 指令 : lgdt指令就是告诉系统gdt表在那里
+    > Loads the values in the source operand into the global descriptor table register (GDTR) or the interrupt descriptor table register (IDTR). The source operand specifies a 6-byte memory location that contains the base address (a linear address) and the limit (size of table in bytes) of the global descriptor table (GDT) or the interrupt descriptor table (IDT).  
+   
+    

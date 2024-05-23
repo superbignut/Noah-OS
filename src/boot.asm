@@ -26,6 +26,9 @@
     ;int 0x80
     ;xchg bx, bx  
 
+    ;call print
+    ;xchg bx, bx
+
     jmp 0:0x1000
 halt:                   
     jmp halt
@@ -35,10 +38,10 @@ print:
     push es
     mov ax, 0xb800
     mov es, ax
-    mov byte [es:0], "L"
+    mov byte [es:0], 'L'
     pop es
     pop ax
-    iret
+    ret
 read_disk:
     pushad          ;eax, ecx, ebx, edx, esp, ebp, esi, edi 这里如果是16位的栈的话，32位寄存器会压两次
     push es        

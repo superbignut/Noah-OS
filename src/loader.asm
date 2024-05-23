@@ -1,7 +1,5 @@
     [org 0x1000]
 
-    
-
 check_memory:
 
     mov ax, 0
@@ -23,21 +21,88 @@ check_memory:
     inc word [ards_num]     ;统计数+1
     cmp ebx, 0              ;判断是不是0,是0结束,不用改
     jnz .next               ;循环
- 
-    mov cx, [ards_num]      ;看循环了几次
-    mov si, 0               ;指针
-.show:
-    mov eax, [si + ards_buffer]         ;只读了低32位,也就是4个字节
-    mov ebx, [si + ards_buffer + 8]     ;length
-    mov edx, [si + ards_buffer + 16]    ;type
-    add si, 20                          ;每次移动20个字节,读取数据
-    loop .show                          ;循环读取
-
+    
+    jmp prepare_protect_mode
 
 .error:
+    mov ax, 0xb800
+    mov ax, es
+    mov byte [es:0], 'E'  
     jmp $
 
 
+
+prepare_protect_mode:
+
+    cli             ; 关闭中断
+
+    in al, 0x92     ; 打开A20
+    or al, 0b10
+    out 0x92, al
+
+    lgdt [gdt_ptr]  ; 加载gdt表的地址和limit
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax    ; 进入保护模式
+
+    jmp word code_selector : protect_enable  ; word是啥意思
+
+    ud2             ; 出错
+
+[bits 32]
+protect_enable:
+
+    mov ax, data_selector
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+
+    mov esp, 0x10000
+
+    mov byte [0xb8000], 'P'     ;这时候虽然bochs写着 ds:[0xb8000] 但其实应该没有用 ds
+
+    mov byte [0x200000], 'P'    ; 不显示
+
+    xchg bx, bx
+
+    jmp $
+
+base equ 0
+limit equ 0xfffff           ;20bit
+
+code_selector equ (1 << 3)  ; index = 1
+data_selector equ (2 << 3)  ; index = 2
+
+
+;gdt 描述地址
+gdt_ptr:                       ; 6B at all
+    dw (gdt_end - gdt_base -1) ; 2B limit limit = len - 1
+    dd gdt_base                ; 4B base GDT基地址
+
+gdt_base:
+    dd 0, 0 ; 8B 第一个Segment Descriptor是空的
+gdt_code:
+    dw limit & 0xffff           ;limit[0:15]
+    dw base & 0xffff            ;base[0:15]
+    db (base >> 16) & 0xff      ;base[16:23]
+    ;type
+    db 0b1110 | 0b1001_0000     ;D_7/DPL_5_6/S_4/Type_0_3
+    db 0b1100_0000 | ( (limit >> 16) & 0xf )   ;G_7/DB_6/L_5/AVL_4/limit[16:19]_3_0
+    db (base >> 24) & 0xff      ;base[24:31]
+
+gdt_data:
+    dw limit & 0xffff
+    dw base & 0xffff
+    db (base >> 16) & 0xff
+    ;type
+    db 0b0010 | 0b1001_0000
+    db 0b1100_0000 | (limit >> 16)
+    db (base >> 24) & 0xff    
+
+gdt_end:
 
 ards_num:
     dw 0
