@@ -21,8 +21,8 @@ check_memory:
     inc word [ards_num]     ;统计数+1
     cmp ebx, 0              ;判断是不是0,是0结束,不用改
     jnz .next               ;循环
-    
-    jmp prepare_protect_mode
+
+    jmp prepare_protect_mode ; 跳到保护模式准备阶段
 
 .error:
     mov ax, 0xb800
@@ -38,22 +38,23 @@ prepare_protect_mode:
 
     in al, 0x92     ; 打开A20
     or al, 0b10
-    out 0x92, al
+    out 0x92, al    ; 写回
 
-    lgdt [gdt_ptr]  ; 加载gdt表的地址和limit
+    lgdt [gdt_ptr]  ; 指定 gdt表 的起始地址
 
     mov eax, cr0
     or eax, 1
     mov cr0, eax    ; 进入保护模式
 
-    jmp word code_selector : protect_enable  ; word是啥意思
+    xchg bx, bx
+    jmp dword code_selector : protect_enable  ; 这里会跳到哪里去？  
 
     ud2             ; 出错
 
 [bits 32]
 protect_enable:
 
-    mov ax, data_selector
+    mov ax, data_selector           
     mov ds, ax
     mov es, ax
     mov ss, ax
@@ -70,12 +71,11 @@ protect_enable:
 
     jmp $
 
-base equ 0
+base equ 0                  ; 这里的base一直是0， 所以是怎么找到0：protect_enable的阿
 limit equ 0xfffff           ;20bit
 
-code_selector equ (1 << 3)  ; index = 1
-data_selector equ (2 << 3)  ; index = 2
-
+code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个
+data_selector equ (0x0002 << 3)  ; index = 2 选择gdt中的第二个
 
 ;gdt 描述地址
 gdt_ptr:                       ; 6B at all
@@ -83,7 +83,7 @@ gdt_ptr:                       ; 6B at all
     dd gdt_base                ; 4B base GDT基地址
 
 gdt_base:
-    dd 0, 0 ; 8B 第一个Segment Descriptor是空的
+    dd 0, 0                     ; 8B 第一个Segment Descriptor是空的
 gdt_code:
     dw limit & 0xffff           ;limit[0:15]
     dw base & 0xffff            ;base[0:15]

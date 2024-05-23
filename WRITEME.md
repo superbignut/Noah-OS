@@ -813,14 +813,16 @@
 
     > A CPU that is initialized by the BIOS starts in Real Mode. Enabling Protected Mode unleashes the real power of your CPU. However, it will prevent you from using most of the BIOS interrupts, since these work in Real Mode (unless you have also written a V86 monitor).
 
-    提升性能，但是禁止了一些中断，有一些操作需要来打开保护模式：
+    提升性能，但是禁止了一些中断，有一些操作需要来打开保护模式，具体在[卷3-10.9节ModeSwitching]()有介绍：
 
     Before switching to protected mode, you must:
 
     1. Disable interrupts, including NMI (as suggested by Intel Developers Manual).
     2. Enable the A20 Line.
     3. Load the Global Descriptor Table with segment descriptors suitable for code, data, and stack.
-
+    4. Execute a far JMP or far CALL instruction.
+    5. The JMP or CALL instruction immediately after the MOV CR0 instruction changes the flow of execution and serializes the processor.
+    
     Whether the CPU is in Real Mode or in Protected Mode is defined by the lowest bit of the CR0 or MSW register.
 
     进步进入保护模式是从硬件上判断的
@@ -859,4 +861,92 @@
     + lgdt 指令 : lgdt指令就是告诉系统gdt表在那里
     > Loads the values in the source operand into the global descriptor table register (GDTR) or the interrupt descriptor table register (IDTR). The source operand specifies a 6-byte memory location that contains the base address (a linear address) and the limit (size of table in bytes) of the global descriptor table (GDT) or the interrupt descriptor table (IDT).  
    
+    > There are several sources that enable A20, commonly each of the inputs are or'ed together to form the A20 enable signal. This means that using one method (if supported by the chipset) is enough to enable A20. If you want to disable A20, you might have to disable all present sources. Always make sure that the A20 has the requested state by testing the line as described above.
+
+    [osdev](https://wiki.osdev.org/A20_Line)上说A20有很多种打开方式，任何一种都可以用，但是如果想关闭A20的话，就要disable所有来源。所以的话，是用0x92端口比较简单
+
+            in al, 0x92     ; 打开A20
+            or al, 0b10
+            out 0x92, al
+    但是这个方法的兼容性好像不是很好，还容易触发”危险“
+
+    cr0第0位是PE位,置1开启保护模式
+
+    >  Enables protected mode when set; enables real-address mode when clear. This flag does not enable paging directly. It only enables segment-level protection. To enable paging, both the PE and PG flags must be set.
     
+
+        jmp prepare_protect_mode
+
+
+        prepare_protect_mode:
+
+            cli             ; 关闭中断
+
+            in al, 0x92     ; 打开A20
+            or al, 0b10
+            out 0x92, al    ; 写回
+
+            lgdt [gdt_ptr]  ; 指定 gdt表 的起始地址和limit
+
+            mov eax, cr0
+            or eax, 1
+            mov cr0, eax    ; 进入保护模式
+
+            jmp code_selector : protect_enable  ; 竟然可以直接这么跳的吗？
+            
+            ; code_selector 和 protect_enable 是怎么产生联系的？
+
+            ud2                 ; 触发异常， 正常情况下跳过执行
+
+        [bits 32]               ; 不太清楚为啥这么写
+        protect_enable:
+
+            mov ax, data_selector           
+            mov ds, ax
+            mov es, ax
+            mov ss, ax
+            mov fs, ax
+            mov gs, ax
+            mov esp, 0x10000
+
+            mov byte [0xb8000], 'P'     ;显示字母    
+
+            mov byte [0x200000], 'P'    ;写入内存
+
+            xchg bx, bx
+
+            jmp $
+
+        base equ 0
+        limit equ 0xfffff           ;20bit
+
+        code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个
+        data_selector equ (0x0002 << 3)  ; index = 2 选择gdt中的第二个
+
+
+        ;gdt 描述地址
+        gdt_ptr:                       ; 6B at all
+            dw (gdt_end - gdt_base -1) ; 2B limit limit = len - 1
+            dd gdt_base                ; 4B base GDT基地址
+
+        gdt_base:
+            dd 0, 0 ; 8B 第一个Segment Descriptor是空的
+        gdt_code:
+            dw limit & 0xffff           ;limit[0:15]
+            dw base & 0xffff            ;base[0:15]
+            db (base >> 16) & 0xff      ;base[16:23]
+            ;type
+            db 0b1110 | 0b1001_0000     ;D_7/DPL_5_6/S_4/Type_0_3
+            db 0b1100_0000 | ( (limit >> 16) & 0xf )   ;G_7/DB_6/L_5/AVL_4/limit[16:19]_3_0
+            db (base >> 24) & 0xff      ;base[24:31]
+
+        gdt_data:
+            dw limit & 0xffff
+            dw base & 0xffff
+            db (base >> 16) & 0xff
+            ;type
+            db 0b0010 | 0b1001_0000
+            db 0b1100_0000 | (limit >> 16)
+            db (base >> 24) & 0xff    
+
+        gdt_end:
