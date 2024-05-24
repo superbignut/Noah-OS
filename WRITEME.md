@@ -936,7 +936,7 @@
             dw base & 0xffff            ;base[0:15]
             db (base >> 16) & 0xff      ;base[16:23]
             ;type
-            db 0b1110 | 0b1001_0000     ;D_7/DPL_5_6/S_4/Type_0_3
+            db 0b1110 | 0b1001_0000     ;D_7/DPL_5_6/S_4/Type_0_3 代码段
             db 0b1100_0000 | ( (limit >> 16) & 0xf )   ;G_7/DB_6/L_5/AVL_4/limit[16:19]_3_0
             db (base >> 24) & 0xff      ;base[24:31]
 
@@ -950,3 +950,14 @@
             db (base >> 24) & 0xff    
 
         gdt_end:
+
+
+    这里有个问题就是 jmp code_selector : protect_enable  ; 竟然可以直接跳到protect_enable的地方 <!-- 这里可以发现如果和于渊的书对比的话，代码在整体上没有用SECTION进行标记，因此按照nasm网给出的解释：    > Any code which comes before an explicit SECTION directive is directed by default into the .text section.    所有不标记的全是代码段，所以全部的代码段应该就是 -->
+
+    这里其实就是对应手册[3.2.2 Protected Flat Model]()中指出的平坦保护模式，代码段和数据段的基地址都是0, 也就是他们的指向全部都是4G空间的0x0000的位置，并且没有界限，因此也就退化成了普通的平坦模式。而我们在加载loader的时候，loader是被加载到内存的0x1000的位置的，protect_enable 自然也会偏移到一个例如 0x10YY的位置上, 我的是0x1060。因此总的偏移就是
+    0x0: 0x1060, 所以再使用0x0: 0x1060的时候会跳到正确的位置上。
+
+    之前一直疑惑的地方是，总觉得 protect_enable 没有被显示的放到 gdt的index=1的那个代码段里，但是后来发现，因为指定了代码段的起始地址为0x0，极限为4GB, 因此0X1000很自然的就在这个超长的段里。终于明白了，有时候卡住了，慢慢想确实是好办法。
+
+---
+    好像是写太多了，vscode 打开有时候会崩溃，正好也进入保护模式了，换新的md文档了PROTECTED.md

@@ -1,4 +1,4 @@
-    [org 0x1000]
+[org 0x1000]
 
 check_memory:
 
@@ -46,11 +46,12 @@ prepare_protect_mode:
     or eax, 1
     mov cr0, eax    ; 进入保护模式
 
+    ;jmp dword code_selector : protect_enable  ; 这里会跳到哪里去？  
     xchg bx, bx
-    jmp dword code_selector : protect_enable  ; 这里会跳到哪里去？  
-
+    jmp dword code_selector : protect_enable
     ud2             ; 出错
 
+[SECTION .s32]
 [bits 32]
 protect_enable:
 
