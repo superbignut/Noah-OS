@@ -1,6 +1,15 @@
 #### 用于记录进入保护模式之后的学习过程
 
-1. 内存映射 - 486
+1. 内存映射
+
+    > On the x86-64 architecture, page-level protection now completely supersedes Segmentation as the memory protection mechanism. On the IA-32 architecture, both paging and segmentation exist, but segmentation is now considered 'legacy'.
+    
+    所以说我一直使用的是I-32不是x86-64，查看[osdev](https://wiki.osdev.org/Bochs):
+
+    > The default compile does not support x86-64, --enable-x86-64 will turn it on.
+
+    所以如果配置的时候没有加这个修饰的话，应该就是32位的了，在配置文件里应该能看出来，但是没找到具体在哪。
+
     - 虚拟内存
     - 多进程访问同一地址
     - 内存分页 4kB  4G / 4k = 2 ^20
@@ -15,7 +24,7 @@
 
     页目录
     ```cpp
-        unsigned int pde[1024]; // 每一个进程都要有一个页表
+        unsigned int pde[1024]; // 页目录
     ```
 
     一页页目录， 一页 页表 总共8KB
