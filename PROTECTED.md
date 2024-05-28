@@ -10,6 +10,37 @@
 
     所以如果配置的时候没有加这个修饰的话，应该就是32位的了，在配置文件里应该能看出来，但是没找到具体在哪。
 
+
+    还是要总结一下 segment-selector 和 segment-descriptor的结构和内容说明:
+
+    ```cpp
+    typedef struct segment_selector{
+        RPL_2,
+        TI_1,
+        Index_13
+    } segment_selector;
+    ```
+    
+
+    ```cpp
+    typedef struct segment_descriptor
+    {
+        Segment_Limit_16[0 : 15],
+        Base_Address_24[0 : 23],
+        Type_4,
+        S_1,
+        DPL_2,
+        P_1,
+        Segment_Limit_4[16 : 19],
+        AVL_1,
+        L_1,
+        DB_1,
+        G_1,
+        Base_Address_8[24 : 31]
+    } segment_descriptor;
+    ```
+    
+
     - 虚拟内存
     - 多进程访问同一地址
     - 内存分页 4kB  4G / 4k = 2 ^20

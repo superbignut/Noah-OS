@@ -75,7 +75,7 @@ protect_enable:
 base equ 0                  ; 这里的base一直是0， 所以是怎么找到0：protect_enable的阿
 limit equ 0xfffff           ;20bit
 
-code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个
+code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个 GFT = 0 Level=00
 data_selector equ (0x0002 << 3)  ; index = 2 选择gdt中的第二个
 
 ;gdt 描述地址
