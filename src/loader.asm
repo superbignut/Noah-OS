@@ -46,7 +46,6 @@ prepare_protect_mode:
     or eax, 1
     mov cr0, eax    ; 进入保护模式
 
-    ;jmp dword code_selector : protect_enable  ; 这里会跳到哪里去？  
     xchg bx, bx
     jmp dword code_selector : protect_enable
     ud2             ; 出错
@@ -55,7 +54,7 @@ prepare_protect_mode:
 [bits 32]
 protect_enable:
 
-    mov ax, data_selector           
+    mov ax, data_selector       ; 切换到数据段
     mov ds, ax
     mov es, ax
     mov ss, ax
@@ -64,7 +63,7 @@ protect_enable:
 
     mov esp, 0x10000
 
-    mov byte [0xb8000], 'P'     ;这时候虽然bochs写着 ds:[0xb8000] 但其实应该没有用 ds
+    mov byte [0xb8000], 'P'     ;这时候虽然bochs写着 ds:[0xb8000] 
 
     mov byte [0x200000], 'P'    ; 不显示
 
