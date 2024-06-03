@@ -67,29 +67,93 @@
 
 2. paging 内存映射
 
-    - 虚拟内存
-    - 多进程访问同一地址
-    - 内存分页 4kB  4G / 4k = 2 ^20
+    要用到很多控制寄存器的内容。见intel手册[卷3-2.5节Control Register]()。
+
+    如果cr4_PAE = 0, 也就是进入保护模式后默认情况，给cr0_PG 位置1后进入的就是32-bits的paging模式。
+
+    > Every paging structure is 4096 Bytes in size and comprises a number of individual entries. With 32-bit paging,each entry is 32 bits (4 bytes); there are thus 1024 entries in each structure. 
+
+    因此每个页表2^12 = 4096个字节，每一个页表项4个字节，就有1024个页表项。
+
+    > Contains the physical address of the base of the paging-structure hierarchy and two flags (PCD and PWT). Only the most-significant bits (less the lower 12 bits) of the base address are specified; the lower 12 bits of the address are assumed to be 0. The first paging structure must thus be aligned to a page (4-KByte) boundary. 
+
+    > When using the physical address extension, the CR3 register contains the base address of the page-directory-pointer table.
+
+    cr3[12:31]的20位用来表述页目录的基地址。外加上还有两个符号位PCD、PWT用来cache，暂不考虑。
+
+    一个页是4KB=4096B， 那么总共就有 4GB / 4KB = 2^20 个页表项。如果想要统计这2^20 * 4B 也就是 4MB的空间，那么任何一个程序的都要4MB的空间显然是浪费了，进而有了页目录的出现。相当于是两级索引：
+
+            31:22 -> Directory      在页目录中查
+            21:12 -> Table          在页表中查
+            11: 0 -> Offset         偏移
+
+    进而对应的页目录PDE(Page-Directory Entry)、页表( Page-Table Entry)也有自己相应的结构，具体在[卷3-4.3 : 图4-4、表4-5 表4-6]()：
     
-    ```cpp
-        unsigned int page_table[1 << 20]; // 每一个进程都要有一个页表
-    ```
+    ### PDE:
 
-    int 是 4个字节 所以需要4MB的内存来存储一个页表， 但是4MB太多了 
+    + 0 (P)
+        
+    > Present; must be 1 to reference a page table
 
-    4MB占了1024个页
+    + 1 (R/W)
+    > Read/write; if 0, writes may not be allowed to the 4-MByte region controlled by this entry.
 
-    页目录
-    ```cpp
-        unsigned int pde[1024]; // 页目录
-    ```
+    + 2 (U/S)
+    > User/supervisor; if 0, user-mode accesses are not allowed to the 4-MByte region controlled by this entry
+     
+    + 3 (PWT)
+    > Page-level write-through; indirectly determines the memory type used to access the page table referenced by this entry 
 
-    一页页目录， 一页 页表 总共8KB
+    + 4 (PCD)
+    > Page-level cache disable; indirectly determines the memory type used to access the page table referenced by this entry
 
-    页表的信息
+    + 5 (A)
+    > Accessed; indicates whether this entry has been used for linear-address translation 
 
-    ```cpp
-        struct page_entry{
-            
-        }
-    ```
+    + 6
+    > Ignored
+
+    + 7 (PS)
+    > If CR4.PSE = 1, must be 0 (otherwise, this entry maps a 4-MByte page
+
+    + 11:8
+    > Ignored
+
+    + 31:12
+    > Physical address of 4-KByte aligned page table referenced by this entry
+
+    ### PTE 
+
+
+    + 0 (P)
+    > Present; must be 1 to map a 4-KByte page
+
+    + 1 (R/W)
+    > Read/write; if 0, writes may not be allowed to the 4-KByte page referenced by this entry
+
+    + 2 (U/S)
+    > User/supervisor; if 0, user-mode accesses are not allowed to the 4-KByte page referenced by this entry
+
+    + 3 (PWT)
+    > Page-level write-through; indirectly determines the memory type used to access the 4-KByte page referenced by this entry 
+
+    + 4 (PCD)
+    > Page-level cache disable; indirectly determines the memory type used to access the 4-KByte page referenced by this entry
+
+    + 5 (A)
+    > Accessed; indicates whether software has accessed the 4-KByte page referenced by this entry
+
+    + 6 (D)
+    > Dirty; indicates whether software has written to the 4-KByte page referenced by this entry
+
+    + 7 (PAT)
+    > If the PAT is supported, indirectly determines the memory type used to access the 4-KByte page referenced by this entry (see Section 4.9.2); otherwise, reserved (must be 0)1
+
+    + 8 (G)
+    > Global; if CR4.PGE = 1, determines whether the translation is global (see Section 4.10); ignored otherwise
+
+    + 11:9
+    > Ignored
+
+    + 31:12
+    > Physical address of the 4-KByte page referenced by this entry

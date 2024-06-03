@@ -46,12 +46,15 @@ prepare_protect_mode:
     or eax, 1
     mov cr0, eax    ; 进入保护模式
 
-    xchg bx, bx
     jmp dword code_selector : protect_enable
     ud2             ; 出错
 
+
+;
+
 [SECTION .s32]
 [bits 32]
+; 正式进入保护模式
 protect_enable:
 
     mov ax, data_selector       ; 切换到数据段
@@ -63,13 +66,68 @@ protect_enable:
 
     mov esp, 0x10000
 
-    mov byte [0xb8000], 'P'     ;这时候虽然bochs写着 ds:[0xb8000] 
+    
+    ; 这里的 CR4.PAE = 0 所以是 32-bits 模式
+    call setup_page
+    xchg bx, bx
+    jmp $
 
-    mov byte [0x200000], 'P'    ; 不显示
+PDE equ 0x2000
+PTE equ 0x3000
+ATTR equ 0b11
 
+setup_page:
+    mov eax, PDE
+    call .clear_page
+    mov eax, PTE
+    call .clear_page
+    ; 前面的1M映射到 0xC000_0000 ~ 0xC010_0000
+    mov eax, PTE
+    or eax, ATTR
+    mov [PDE], eax ; 0b_00000_00000_00000_00000_00000_00
+    mov [PDE + 0x300 * 4], eax ; 0b_11000_00000_00000_00000_00000_00
+
+    mov eax, PDE
+    or eax, ATTR
+    mov [PDE + 0x3ff * 4], eax ; 把最后一个页表指向页目录
+
+    mov ebx, PTE
+    mov ecx, (0x10000 / 0x1000) ; 256
+    mov esi, 0
     xchg bx, bx
 
-    jmp $
+.next_page:
+    mov eax, esi
+    shl eax, 12
+    or eax, ATTR
+
+    mov [ebx + esi * 4], eax
+    inc esi
+    loop .next_page
+
+    xchg bx, bx
+    ; 启用内存映射
+    mov eax, PDE
+    mov cr3, eax
+    ; 打开分页机制
+    mov eax, cr0
+    or eax, 0b1000_0000_0000_0000_0000_0000_0000_0000 ; CR0_PG = 1
+    mov cr0, eax
+    ret
+
+
+.clear_page:
+    ; 清空一个内存页地址 地址参数存在eax中
+    mov ecx, 0x1000
+    mov si, 0
+.set:
+    mov byte [eax + esi], 0
+    inc esi
+    loop .set
+    ret
+
+
+
 
 base equ 0                  ; 这里的base一直是0， 所以是怎么找到0：protect_enable的阿
 limit equ 0xfffff           ;20bit
@@ -99,7 +157,7 @@ gdt_data:
     db (base >> 16) & 0xff
     ;type
     db 0b0010 | 0b1001_0000
-    db 0b1100_0000 | (limit >> 16)
+    db 0b1100_0000 | ( (limit >> 16) & 0xf )
     db (base >> 24) & 0xff    
 
 gdt_end:
