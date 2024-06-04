@@ -54,7 +54,7 @@
         所以 这个 limit = 最大的字节数-1
       + 紧接着的23位是 基地值 base[0:23], 就是这个segment_descriptor的首地址
       + 4位的type 表示的范围是0-15, 其中[0,7]表示数据段， [8,15]表示代码段， 具体的区别在于访问A，读写R/W和扩展方向E， 除了访问位作为一种标记手段，其余两个bit的作用会根据代码段和数据段而有所区别
-      + S 位 0表示 代码段和数据段， 为1 表示系统段，暂时不理解
+      + S 位 1表示 代码段和数据段， 为0表示系统段，暂时不理解
       + DPL-descriptor privilege level 与上面的RPL结合使用
       + P 位表示 段是否被加加载到内存中
       + D_B 位对于32位需要置1
@@ -80,6 +80,11 @@
     > When using the physical address extension, the CR3 register contains the base address of the page-directory-pointer table.
 
     cr3[12:31]的20位用来表述页目录的基地址。外加上还有两个符号位PCD、PWT用来cache，暂不考虑。
+    
+    >  Only the most-significant bits (less the lower 12 bits) of the base address are specified; the lower 12 bits of the address are assumed to be 0. The first paging structure must thus be aligned to a page (4-KByte) boundary. 
+
+    这里指出， cr3只是给出了页目录基地址的高20位，低12位全部是0， 因此具体在设置页目录的位置的时候，要求地址的后12位全部是0。同样的，因为页表中的有效地址也都是20位，因此页表也要同样的对齐。
+
 
     一个页是4KB=4096B， 那么总共就有 4GB / 4KB = 2^20 个页表项。如果想要统计这2^20 * 4B 也就是 4MB的空间，那么任何一个程序的都要4MB的空间显然是浪费了，进而有了页目录的出现。相当于是两级索引：
 

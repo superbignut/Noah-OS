@@ -72,31 +72,41 @@ protect_enable:
     xchg bx, bx
     jmp $
 
+; 页目录放在的位置，最后12位全部是0
 PDE equ 0x2000
+
+; 页表的位置
 PTE equ 0x3000
-ATTR equ 0b11
+ATTR equ 0b11 ; 只有P和R/W置1,其余是0
+
 
 setup_page:
+    ; 设置页表配置
     mov eax, PDE
-    call .clear_page
+    call .clear_page    ; 清空页目录
     mov eax, PTE
-    call .clear_page
+    call .clear_page    ; 清空页表
+    
+    ; 将最初的0-1M 映射后还是0-1M
     ; 前面的1M映射到 0xC000_0000 ~ 0xC010_0000
     mov eax, PTE
     or eax, ATTR
-    mov [PDE], eax ; 0b_00000_00000_00000_00000_00000_00
-    mov [PDE + 0x300 * 4], eax ; 0b_11000_00000_00000_00000_00000_00
+
+    ; 第0个页目录， 每个页目录占4个字节
+    mov [PDE], eax ; 0b_00000_00000 00000_00000_ 00000_00 ; 将第一个页表项移到页目录
+    ; 第0x300个页目录， 每个页目录占4个字节
+    mov [PDE + 0x300 * 4], eax ; 0b_11000_00000 _00000_00000 _00000_00   ；将第二个页表项移动到第0x300个页目录的位置
 
     mov eax, PDE
     or eax, ATTR
     mov [PDE + 0x3ff * 4], eax ; 把最后一个页表指向页目录
 
     mov ebx, PTE
-    mov ecx, (0x10000 / 0x1000) ; 256
+    mov ecx, (0x10000 / 0x1000) ; 2^8 = 256个页
     mov esi, 0
     xchg bx, bx
 
-.next_page:
+    .next_page:     ; 把256个页都写到PTE里面
     mov eax, esi
     shl eax, 12
     or eax, ATTR
@@ -119,7 +129,7 @@ setup_page:
 .clear_page:
     ; 清空一个内存页地址 地址参数存在eax中
     mov ecx, 0x1000
-    mov si, 0
+    mov esi, 0
 .set:
     mov byte [eax + esi], 0
     inc esi
