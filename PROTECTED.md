@@ -196,4 +196,8 @@
       - PDE的页表项中存的是1K个PTE的首地址
       - PTE的页表项中存的是一个4KB大小的物理页的首地址
 
-    Todo: bochs 查看page table
+    还有一个很特殊的地方就是，0x3ff 的页目录被指向了页目录自己，所以对于前20位都是1的1KB：
+
+          0xffff_f000 - 0xffff_ffff
+
+    指向的就是PDE页目录的物理地址, 通过 info tab 就可以查看
