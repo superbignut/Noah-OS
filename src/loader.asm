@@ -77,7 +77,7 @@ PDE equ 0x2000
 
 ; 页表的位置
 PTE equ 0x3000
-ATTR equ 0b11 ; 只有P和R/W置1,其余是0
+ATTR equ 0b11 ; 只有P和R/W置1,其余是0, 暂时只写最低的两位
 
 
 setup_page:
@@ -89,36 +89,47 @@ setup_page:
     
     ; 将最初的0-1M 映射后还是0-1M
     ; 前面的1M映射到 0xC000_0000 ~ 0xC010_0000
-    mov eax, PTE
+    mov eax, PTE        ; 把PTE的地址放入eax
     or eax, ATTR
 
+    
+    mov [PDE], eax 
     ; 第0个页目录， 每个页目录占4个字节
-    mov [PDE], eax ; 0b_00000_00000 00000_00000_ 00000_00 ; 将第一个页表项移到页目录
+    ; 0x0000_0000 = 0b_0000_0000_0000_0000_0000_0000_0000_0000
+    ; 前10位是0x000,所以映射到了页目录的第0个页表项
+
+    
+    mov [PDE + 0x300 * 4], eax
     ; 第0x300个页目录， 每个页目录占4个字节
-    mov [PDE + 0x300 * 4], eax ; 0b_11000_00000 _00000_00000 _00000_00   ；将第二个页表项移动到第0x300个页目录的位置
+    ; 0xc000_0000 = 0b_1100_0000_0000_0000_0000_0000_0000_0000 
+    ; 前10位是0x300, 所以也就映射到了页目录中的第0x300个页表项
+
+    ;现在，页目录中的这两个页表项都指向的PTE的这个页表
 
     mov eax, PDE
     or eax, ATTR
-    mov [PDE + 0x3ff * 4], eax ; 把最后一个页表指向页目录
+    ; 0x400 = 1024 = 2^10 也就是最后一个页
+    mov [PDE + 0x3ff * 4], eax ; 把最后一个页表指向页目录,指向自己
+    ; 其实0x3ff也就是 逻辑地址的前10位全是1：0b11_1111_1111
 
     mov ebx, PTE
-    mov ecx, (0x10000 / 0x1000) ; 2^8 = 256个页
+    mov ecx, (0x10000 / 0x1000) ; 2^20=1MB的地址总共有 2^8 = 256个页，每页2^12=4KB 
     mov esi, 0
-    xchg bx, bx
 
     .next_page:     ; 把256个页都写到PTE里面
-    mov eax, esi
-    shl eax, 12
-    or eax, ATTR
-
-    mov [ebx + esi * 4], eax
-    inc esi
+        mov eax, esi    
+        shl eax, 12     ; eax 左移12位作为那个页的物理页首地址，低12位是控制位 
+        or eax, ATTR    ; 控制位赋值
+        ; 这里就把 0x0000_0000 到0x0010_0000 这1MB的物理地址按顺序写进PTE
+        mov [PTE + esi * 4], eax    
+        ; 把首地址 放到对应的页表项中，这里的esi可以从0开始，对应逻辑地址的中间12位是从0开始
+        inc esi
     loop .next_page
 
     xchg bx, bx
     ; 启用内存映射
     mov eax, PDE
-    mov cr3, eax
+    mov cr3, eax    ; 将页目录加载进cr3寄存器
     ; 打开分页机制
     mov eax, cr0
     or eax, 0b1000_0000_0000_0000_0000_0000_0000_0000 ; CR0_PG = 1
@@ -126,15 +137,17 @@ setup_page:
     ret
 
 
-.clear_page:
-    ; 清空一个内存页地址 地址参数存在eax中
-    mov ecx, 0x1000
-    mov esi, 0
-.set:
-    mov byte [eax + esi], 0
-    inc esi
-    loop .set
-    ret
+    .clear_page:
+        push ecx
+        ; 清空一个内存页地址 地址参数存在eax中
+        mov ecx, 0x1000     ; 4Kb
+        mov esi, 0
+        .set:
+            mov byte [eax + esi], 0
+            inc esi
+            loop .set
+        pop ecx
+        ret
 
 
 
