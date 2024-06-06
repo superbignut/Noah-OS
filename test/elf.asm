@@ -1,15 +1,7 @@
 [bits 32]
-extern printf
-extern exit    
 section .text
     global main
     main:
-
-    ;push message 
-    ;call printf
-    ;add exp, 4
-    ;push 0
-    ;call exit 
 
     mov eax, 4  ;write
 
@@ -30,9 +22,9 @@ section .text
 
     int 0x80
 
-section .rodata
-tmessage: db 7
 section .data
-message: db "hello world", 10, 13, 0
+    message: db "hello world", 10, 13, 0
 message_end:
 
+section .bss
+    resb 0x100 ; 预留 0X100 字节的空间

@@ -201,3 +201,22 @@
           0xffff_f000 - 0xffff_ffff
 
     指向的就是PDE页目录的物理地址, 通过 info tab 就可以查看
+
+3. ELF 文件格式
+
+  + 内核就是一个ELF文件
+   + 可执行文件   .exe
+   + 可重定位 静态库  .o .lib
+   + 动态链接文件  .so .dll
+
+  内核是用c语言写的， c语言和汇编相互调用
+
+  - 代码 .text
+  - 数据
+    - .data 已经初始化过的数据
+    - .bss  未初始化的数据 buffer 缓存区域
+    - readelf -e 
+    - PIE 位置无关的可执行程序
+    - objdump -d -M intel
+    - gcc -m32 elf.o -static -nostartfiles -e main
+    - gcc 编译会比 nasm多很多东西？
