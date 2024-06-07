@@ -202,21 +202,31 @@
 
     指向的就是PDE页目录的物理地址, 通过 info tab 就可以查看
 
-3. ELF 文件格式
 
-  + 内核就是一个ELF文件
-   + 可执行文件   .exe
-   + 可重定位 静态库  .o .lib
-   + 动态链接文件  .so .dll
+3. ELF - [Executable and Linking Format](http://www.skyfree.org/linux/references/ELF_Format.pdf) 文件格式
 
-  内核是用c语言写的， c语言和汇编相互调用
+  > A very versatile file format, it was later picked up by many other operating systems for use as both executable files and as shared library files. It does distinguish between TEXT, DATA and BSS.
 
-  - 代码 .text
-  - 数据
-    - .data 已经初始化过的数据
-    - .bss  未初始化的数据 buffer 缓存区域
-    - readelf -e 
-    - PIE 位置无关的可执行程序
-    - objdump -d -M intel
-    - gcc -m32 elf.o -static -nostartfiles -e main
-    - gcc 编译会比 nasm多很多东西？
+  > An ELF file might indepedenently contain sections or segments.
+
+  ELF文件有 sections(节)， segments(段)这两部分：
+
+  ELF 文件有三种类型：
+  + 可重定位
+  + 可执行
+  + 静态、动态链接
+
+  因此ELF可以被大致分为链接格式和可执行格式:
+  - 链接格式下 Program header table 为可选内容，但一定要有 Section header table 用来描述不同的 Section, 不同的Section指的也就是 .text .data .bss这些。
+  - 可执行格式下Section header table 为可选，但Program header table为必选，用来描述整个可执行文件。
+
+  + resb
+    > RESB, RESW, RESD, RESQ, REST, RESO, RESY and RESZ are designed to be used in the BSS section of a module: they declare uninitialized storage space. Each takes a single operand, which is the number of bytes, words, doublewords or whatever to reserve.  
+
+
+4. AT&T 汇编格式
+
+
+5. gcc 汇编分析
+
+  
