@@ -228,5 +228,47 @@
 
 
 5. gcc 汇编分析
+  + c语言生成的汇编代码
+  + CFI Call Frame Inforamtion 可以在调用失败的时候，回溯栈
+  + -fno-asynchronous-unwind-tables 去掉调试信息
+  + 生成 PIC Position Independent Code 位置无关代码 / 动态链接
+  + mov eax, eip ; __x86.get_pc_thunk.ax 来获取eip的值
+  + -fno-pic 去掉位置无关代码
 
+        hello.s: hello.c
+        gcc -m32 -S -fno-asynchronous-unwind-tables -fno-pic 
+---
+  生成的汇编如下：
+
+        -mpreferred-stack-boundary=2  -masm=intel $< -o $@
+          .file	"hello.c"
+          .intel_syntax noprefix
+          .text
+          .section	.rodata
+        .LC0:
+          .string	"Hello World!"
+          .text
+          .globl	main
+          .type	main, @function
+        main:
+          push	ebp
+          mov	ebp, esp
+          push	OFFSET FLAT:.LC0
+          call	printf
+          add	esp, 4
+          mov	eax, 0
+          leave
+          ret
+          .size	main, .-main
+          .ident	"GCC: (Ubuntu 12.3.0-1ubuntu1~22.04) 12.3.0"
+          .section	.note.GNU-stack,"",@progbits
+
+6. end
+
+  把汇编跟到这里也要告一段落了，汇编和C结合的这部分内容，如果不去看一些链接,ELF这些的书因该是很难跟的上了，这里又看到 up 在最后一节有推荐， 《程序员的自我修养-链接-装载与库》，我猜测，可能这些就是我接下来需要补充的内容吧。
+
+  总体来看，硬盘读写，保护模式，内存映射这三块对我的印象最为深刻。当然除此之外，期间有过无数次想要放弃的想法，但最终又都捡了起来，在这不断的放弃和捡起的经历中，自己真的看了好多的文档和手册。可能代码原创的不多，但debug的过程还是让人记忆深刻。
   
+  的确，有的时候虽然是向着终点出发，但实际上让人收获最多的却是途中的景色。
+
+  汇编告一段落了，不知道什么时候会去做一个自己的OS呢
