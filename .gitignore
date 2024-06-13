@@ -8,6 +8,9 @@ ORANGE_OS/
 **/*.vdi
 **/*.vmdk
 **/*.img
-before/
-c07/
-a/
+x86-asm/before/
+x86-asm/c07/
+x86-asm/a/
+x86-asm/analyse/
+x86-asm/pics/
+x86-asm/test/

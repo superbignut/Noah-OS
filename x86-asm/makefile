@@ -5,7 +5,6 @@ bochs: build/master.img
 build/master.img: build/boot.bin build/loader.bin
 ifeq ("$(wildcard build/master.img)", "")
 	bximage -func=create -hd=16M -imgmode=flat -sectsize=512 $@ -q
-# 创建硬盘镜像
 endif
 	dd if=build/boot.bin of=$@ bs=512 count=1 conv=notrunc
 # MBR 主引导扇区
@@ -14,6 +13,17 @@ endif
 
 build/%.bin: src/%.asm
 	nasm $< -o $@ 
+
+master.vdi: build/master.img
+	qemu-img convert -f raw -O vdi build/master.img build/master.vdi
+
+# 使用c语言输出 hello world
+hello: test/hello.c
+	cd test && gcc -m32 -S hello.c -o hello.s && gcc -m32 hello.o -o hello 
+	
+# 使用汇编调用linux系统调用，输出 hello world
+hello-nasm: test/hello.asm
+	cd test && nasm -f elf32 hello.asm && gcc -m32 hello.o -o hello
 
 .PHONY: clean
 clean:

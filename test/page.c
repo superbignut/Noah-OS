@@ -1,1 +1,0 @@
-unsigned int page_table[1 << 20]; // 每一个进程都要有一个页表
