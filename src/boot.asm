@@ -13,7 +13,7 @@
     mov ecx, 2
     mov bl, 4
     
-    
+
     call read_disk
     jmp 0: 0x1000
 halt:                   
@@ -40,7 +40,7 @@ read_disk:
     out dx, al
 
     shr ecx, 8
-    mov al, 0
+    mov al, cl
     mov dx, 0x1f5   ; high
     out dx, al
 
@@ -94,7 +94,10 @@ read_disk:
             nop
             in ax, dx   ; port = dx read port:dx to ax.
             mov [es:edi], ax    ; read to es:edi
-            add di, 2           ; edi
+            ; 如果不进入保护模式的话，这个edi只能从0x0000 加到 0xffff 也就是 65535 / 512 = 128
+            ; 最多为 128个扇区
+            add edi, 2           ; edi
+            
 
             loop .read_loop
         ret

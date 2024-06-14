@@ -56,8 +56,7 @@ print_real_loader:
     db "Loader init successfully...", 10, 13, 0
 print_real_memory_check:
     db "Memory check successfully...", 10, 13, 0
-print_proc_protect_mode:
-    db "Protected mode already...", 0
+
 prepare_protect_mode:
     
     mov si, print_real_memory_check
@@ -74,7 +73,7 @@ prepare_protect_mode:
     mov eax, cr0
     or eax, 1
     mov cr0, eax    ; 进入保护模式
-    ; gdt_ptr 起始地址 +  code_selector 即可选中对应的 segment_descriptor
+    ; gdt_ptr 指向GDT表的起始地址 +  code_selector 即可选中对应的 segment_descriptor
     ; 进而进入到保护模式
     jmp dword code_selector : protect_enable    
     ud2             ; 如果出错，执行ud2
@@ -98,48 +97,120 @@ real_printf:
     jmp .next
 .done:
     ret
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;下面为32为代码;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 [SECTION .s32]
 [bits 32]
-; 正式进入保护模式
 
-proc_printf:
-    ; 保护模式下的打印字符串
-    ; eax 保存显示起始地址
-    ; edi 存字符串起始地址
-    push cx
-.inner_print:
-    mov byte cl, [edi]
-    mov byte [eax], cl; 把edi寄存器指向的内存的内容，放到eax执行的内存中
-    add edi, 1
-    add eax, 2
-    cmp byte [edi], 0x0
-    jnz .inner_print
-    pop cx
-    ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;正式进入保护模式;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 protect_enable:
 
-    mov ax, data_selector       ; 切换到数据段
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov fs, ax
-    mov gs, ax
-    mov esp, 0x10000
+	mov ax, data_selector       ; 切换到数据段
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov fs, ax
+	mov gs, ax
+	mov esp, 0x10000
+	
 
-    ; 这里的 CR4.PAE = 0 所以是 32-bits 模式
-    call setup_page ; 现在开始可以使用 0xC000_0000 到 0xc010_0000的逻辑地址 
+	mov edi, 0x10000 	; 将硬盘的第10个扇区(lba=10)开始的200个扇区，移到0x10000位置
+	mov ecx, 10		    ;; 0X10000 + 200 * 512 = 0x10000 + 0x19000 = 0x29000
+	mov bl, 200
+        				; 这里的 CR4.PAE = 0 所以是 32-bits 模式
+    call read_disk 		; 现在开始可以使用 0xC000_0000 到 0xc010_0000的逻辑地址 
 
-    mov eax, 0xb8000
-    mov edi, print_proc_protect_mode
+    jmp code_selector : 0x10000 ; 跳进 kernel
 
-    ;call real_printf
-    xchg bx, bx
+    ud2                 ; 
 
-    jmp $           ; 这个jump $ 我不确定是不是能jump到合适的位置
+;;;;;;;;;;;;;;;;;;; 硬盘读写
+read_disk:
+    pushad          ;eax, ecx, ebx, edx, esp, ebp, esi, edi 这里如果是16位的栈的话，32位寄存器会压两次       
+    ;读取硬盘
+    ; edi - 把读取到的数据，在内存中存放的位置 edi
+    ; ecx - 读取的原始数据在硬盘中的扇区位置-lba
+    ; bl 扇区数量
+    mov dx, 0x1f2 
+    mov al, bl      ; 读写扇区的数量
+    out dx, al
+
+    mov al, cl      ; 读取第0个扇区 low
+    mov dx, 0x1f3
+    out dx, al
+
+    shr ecx, 8
+    mov al, cl
+    mov dx, 0x1f4   ; mid
+    out dx, al
+
+    shr ecx, 8
+    mov al, cl
+    mov dx, 0x1f5   ; high
+    out dx, al
+
+    shr ecx, 8
+    and cl, 0b0000_1111
+    mov al, 0b1110_0000
+    or al, cl
+    mov dx, 0x1f6       ;master + lba_high_4
+    out dx, al
+
+    mov al, 0x20    ; read sectors command 0x20
+    mov dx, 0x1f7
+    out dx, al
+
+    xor ecx, ecx
+    mov cl, bl
+
+    .read:
+        push cx     ; cx was changed in .read_sector
+        call .wait_sector   ; wait every read.
+        call .read_sector
+        pop cx
+        loop .read
+
+    popad
+    ret
+
+    .wait_sector:
+        mov dx, 0x1f7
+        .check_read_state:  ; 选择扇区后要延迟一下，并不是每次读取时都要检查
+            nop
+            nop
+            nop
+            in al, dx ; 0x1f7
+
+            and al, 0b1000_1000
+            cmp al, 0b0000_1000
+            jnz .check_read_state
+        ret
+
+
+    .read_sector:
+        mov dx, 0x1f0
+        mov cx, 256     ;loop one sector
+
+        .read_loop:          ;读取数据
+            nop
+            nop
+            nop
+            in ax, dx   ; port = dx read port:dx to ax.
+
+            mov [edi], ax    ; read to edi
+            add edi, 2           ; edi 如果写成di 会有问题
+
+            loop .read_loop
+        ret
+;;;;;;;;;;;;;;;;;;; 硬盘读写
+
 
 ; 页目录放在的位置，最后12位全部是0
 PDE equ 0x2000
@@ -222,9 +293,9 @@ base equ 0                  ; 这里的base一直是0， 所以是怎么找到0�
 limit equ 0xfffff           ;20bit
 
 ; 数据段的 segment_selector
-code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个 GFT = 0 Level=00
+code_selector equ (0x0001 << 3)  ; index = 1 选择gdt中的第一个 
 ; 代阿段的 segment_selector
-data_selector equ (0x0002 << 3)  ; index = 2 选择gdt中的第二个
+data_selector equ (0x0002 << 3)  ; index = 2 选择gdt中的第二个 2^13=8192
 
 ;gdt 描述地址 用来表示GDT表的起始地址和长度， 使用lgdt 加载到gdtr寄存器中，
 gdt_ptr:                       ; 6B at all 

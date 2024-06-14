@@ -2,6 +2,7 @@
 \#*\#
 **/*.rs~
 **/*\#
+**/*.o
 .vscode/
 ORANGE_OS/
 **/*.bin
