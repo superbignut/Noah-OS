@@ -3,7 +3,7 @@ ENTRYPOINT := 0x10000
 
 .PHONY: bochs
 bochs: build/master.img
-	@echo "$(dir $<)"
+#	@echo "$(dir $<)"
 	bochs -q  
 
 build/master.img: build/boot.bin \
@@ -23,25 +23,44 @@ endif
 
 build/kernel/%.o: src/kernel/%.asm
 	$(shell mkdir -p $(dir $@))
-	@echo "$(dir $@)"
+#	@echo "$(dir $@)"
 	nasm -f elf32 $< -o $@
+# 生成elf32 的.o文件
 
-# 暂不理解
 build/kernel.bin: build/kernel/start.o
 	$(shell mkdir -p $(dir $@))
-	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRYPOINT)
+	ld -m elf_i386 -static $^ -o $@ -Ttext=$(ENTRYPOINT)
+# -m elf_i386: Emulate the emulation linker. 链接生成32位的i386指令
+# -static: Do not link against shared libraries. This is only meaningful
+#          on platforms for which shared libraries are supported. 暂不理解
+#-Ttext=org: When creating an ELF executable, it will set the address 
+# 			 of the first byte of the text segment.
+# 将elf32的.o文件链接成 .bin可执行文件
 
-# 暂不理解
+
 build/system.bin: build/kernel.bin
 	objcopy -O binary $< $@
+# The GNU objcopy utility copies the contents of an object file to another. 
+# objcopy can be used to generate a raw binary file by using an output target 
+# of `binary' (e.g., use `-O binary'). When objcopy generates a raw binary file,
+# it will essentially produce a memory dump of the contents of the input object 
+# file. All symbols and relocation information will be discarded. The memory dump
+# will start at the load address of the lowest section copied into the output file.
+# 将 elf文件中的其他内容去掉
+
+
 # 暂不理解
 build/system.map: build/kernel.bin
 	nm $< | sort > $@
+# GNU nm lists the symbols from object files
+# 将符号表 排序后输出到system.map中
+
 
 test: build/kernel.bin
 
 build/%.bin: src/%.asm
 	$(shell mkdir -p $(dir $@))
+# 如果没有build目录，需要先创建出来
 	nasm $< -o $@ 
 
 .PHONY: clean

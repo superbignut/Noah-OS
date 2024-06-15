@@ -39,7 +39,7 @@ check_memory:
     mov ebx, [ards_buffer + si + 8]
     mov edx, [ards_buffer + si + 16]
     add si, 20
-    xchg bx, bx
+
     loop .show
     ; 0x0_0000 - 0x9_f000 type=1
     ; 0x10_0000 - 0x1ff_0000 type=1 不到32MB的内存
@@ -75,12 +75,9 @@ prepare_protect_mode:
     mov cr0, eax    ; 进入保护模式
     ; gdt_ptr 指向GDT表的起始地址 +  code_selector 即可选中对应的 segment_descriptor
     ; 进而进入到保护模式
-    jmp dword code_selector : protect_enable    
+
+    jmp dword code_selector : protect_enable    ; 使用dword之后，被编译成32位指令 使用0x66前缀
     ud2             ; 如果出错，执行ud2
-
-
-
-
 
 real_printf:
     ; si用于存放字符串首地址，

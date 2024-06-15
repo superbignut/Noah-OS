@@ -4,5 +4,6 @@
 
 _start:	
 
+	xchg bx, bx
 	mov byte [0xb8000], 'K'
 	jmp $
