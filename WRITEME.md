@@ -42,16 +42,31 @@
 
 	+ 预处理
 	 
-				cd src/kernel
-				gcc -m32 -E main.c -I../include > test.c
+			cd src/kernel
+			gcc -m32 -E main.c -I../include > test.c
 
 		生成预处理之后的文件
 	+ 编译
 	
 			gcc -m32 -S test.c > test.s
 
-	+ gcc -c 是编译 + 汇编
-
 	+ 汇编
 	
 			as --32 test.s -o test.o
+
+	+ 链接
+	
+			ld -m elf_i386 -static -test.o -o test.out -e kernel_init
+
+		设置-e会设置起始地址, 链接之后readelf -a 看到的符号表的地址不再是0
+
+	+ 使用gcc 集成以上内容
+
+
+			gcc --verbose -m32 main.c -I../include -o main.out -e kernel_init -nostartfiles
+
+			/usr/lib/gcc/x86_64-linux-gnu/12/cc1 
+
+			as -v -I ../include --32 -o /tmp/ccOwv49n.o /tmp/ccbW8PC3.s 
+
+			/usr/lib/gcc/x86_64-linux-gnu/12/collect2

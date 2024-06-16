@@ -1,5 +1,17 @@
 ENTRYPOINT := 0x10000
 
+CFLAG := -m32
+CFLAG += -fno-builtin # 不需要gcc的内置函数 such as : memcpy
+CFLAG += -nostdinc # 不需要标准头文件
+CFLAG += -fno-pic # 不需要位置无关的代码 
+CFLAG += -fno-pie # 不需要位置无关的可执行程序
+CFLAG += -nostdlib # 不需要标准库
+CFLAG += -fno-stack-protector # 不需要栈保护
+CFLAG := $(strip ${CFLAG}) # 删除结尾的换行，更简洁
+
+DEBUG := -g # 调试信息
+
+INCLUDE := -I./src/include # 头文件
 
 .PHONY: bochs
 bochs: build/master.img
@@ -21,13 +33,19 @@ endif
 	dd if=build/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
 # 跳过前10个扇区，写200个扇区
 
+# 似乎 build/kernel/%.o 有两个入口, 这里应该是会对依赖文件是否存在进行一个判断，存在才会执行
 build/kernel/%.o: src/kernel/%.asm
 	$(shell mkdir -p $(dir $@))
 #	@echo "$(dir $@)"
-	nasm -f elf32 $< -o $@
-# 生成elf32 的.o文件
+	nasm -f elf32 $(DEBUG) $< -o $@
 
-build/kernel.bin: build/kernel/start.o
+build/kernel/%.o: src/kernel/%.c
+	$(shell mkdir -p $(dir $@))
+#	@echo "$(dir $@)"
+	gcc $(CFLAG) $(DEBUG) $(INCLUDE) -c $< -o $@
+
+build/kernel.bin: build/kernel/start.o \
+				  build/kernel/main.o
 	$(shell mkdir -p $(dir $@))
 	ld -m elf_i386 -static $^ -o $@ -Ttext=$(ENTRYPOINT)
 # -m elf_i386: Emulate the emulation linker. 链接生成32位的i386指令
@@ -58,6 +76,8 @@ build/system.map: build/kernel.bin
 
 
 test: build/kernel.bin
+
+test2: build/kernel2.bin
 
 build/%.bin: src/%.asm
 	$(shell mkdir -p $(dir $@))

@@ -1,8 +1,8 @@
-#include "ewit/ewit.h"
+#include "ltos/ltos.h"
 
-int magic = EWIT_MAGIC;
+int magic = LT_MAGIC;
 
-char msg[] = "Hello ewit!!!!";
+char msg[] = "Hello ltos!";
 
 char buf[1024];
 
