@@ -32,7 +32,8 @@ build/kernel.bin: build/kernel/start.o
 	ld -m elf_i386 -static $^ -o $@ -Ttext=$(ENTRYPOINT)
 # -m elf_i386: Emulate the emulation linker. 链接生成32位的i386指令
 # -static: Do not link against shared libraries. This is only meaningful
-#          on platforms for which shared libraries are supported. 暂不理解
+#          on platforms for which shared libraries are supported. 
+# 使用-static 暂不理解，是为了不链接其他的动态库吗
 #-Ttext=org: When creating an ELF executable, it will set the address 
 # 			 of the first byte of the text segment.
 # 将elf32的.o文件链接成 .bin可执行文件
