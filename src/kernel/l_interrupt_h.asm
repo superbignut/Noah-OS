@@ -1,7 +1,7 @@
 [bits 32]
 
 ; global _interrupt_handler
-    extern _handler_table
+    extern handler_table
 
     %macro INTERRUPT_HANDLER 2
 
@@ -29,7 +29,7 @@ interrupt_entry:
 
     push eax                                ; 这个参数 就是 异常（中断）编号
 
-    call [_handler_table + eax * 4]         ; 调用处理函数 回到 c 
+    call [handler_table + eax * 4]         ; 调用处理函数 回到 c 
 
     global interrupt_exit
 
@@ -102,9 +102,9 @@ interrupt_exit:
     INTERRUPT_HANDLER 0x2F, 0
                    
 
-    global _handler_entry_table             ; 将 _interrupt_handler_0x** 函数的首地址 放在一个数组中， 并声明为 global
+    global handler_entry_table             ; 将 _interrupt_handler_0x** 函数的首地址 放在一个数组中， 并声明为 global
 
-_handler_entry_table:                       ;  这里就相当于把 各个处理函数的首地址放在一块， 当作一个数组
+handler_entry_table:                       ;  这里就相当于把 各个处理函数的首地址放在一块， 当作一个数组
     dd _interrupt_handler_0x00              ;  4个字节
     dd _interrupt_handler_0x01
     dd _interrupt_handler_0x02
@@ -158,15 +158,15 @@ _handler_entry_table:                       ;  这里就相当于把 各个处�
 
 section .text
 
-    extern _syscall_check, _syscall_table
-    global _syscall_handler
+    extern syscall_check, syscall_table
+    global syscall_handler
 
     ;  系统调用处理函数，
-_syscall_handler:
+syscall_handler:
 
     push eax                ;  暂存 eax, 进行参数检查
 
-    call _syscall_check     ;  也就是检查 系统调用号
+    call syscall_check     ;  也就是检查 系统调用号
 
     pop eax                 ;  返回值在 eax 寄存器中， 后续根据eax 的不同调用号调用不同的 处理函数
 
@@ -189,7 +189,7 @@ _syscall_handler:
 
     push ebx                ;  参数 1
 
-    call [_syscall_table + eax * 4]         ;  调用
+    call [syscall_table + eax * 4]         ;  调用
 
     add esp, 12                             ;  三个参数的 栈的恢复， 这里之所以 不是 add esp, 16 是为了留一个 参数4， 进而兼容 interrupt_exit
     

@@ -1,13 +1,13 @@
 [bits 32]
 section .text
 
-global _read_byte_from_port
-global _read_word_from_port
-global _write_byte_to_port
-global _write_word_to_port
+global read_byte_from_port
+global read_word_from_port
+global write_byte_to_port
+global write_word_to_port
 
 ; 读到的数据 根据 ABI 约定， eax 用于存放函数的返回值
-_read_byte_from_port:
+read_byte_from_port:
     push ebp
     mov ebp, esp                ; esp 的值放到ebp 中
                                 ; c 的话在这里会 subl 申请栈， 用于存放局部变量
@@ -21,7 +21,7 @@ _read_byte_from_port:
 
     leave
     ret
-_read_word_from_port:
+read_word_from_port:
     push ebp
     mov ebp, esp                ; esp 的值放到ebp 中
                                 ; c 的话在这里会 subl 申请栈， 用于存放局部变量
@@ -36,7 +36,7 @@ _read_word_from_port:
     leave
     ret 
 
-_write_byte_to_port:
+write_byte_to_port:
     push ebp
     mov ebp, esp                ; esp 的值放到ebp 中
                                 ; c 的话在这里会 subl 申请栈， 用于存放局部变量
@@ -51,7 +51,7 @@ _write_byte_to_port:
     leave
     ret 
 
-_write_word_to_port:
+write_word_to_port:
     push ebp
     mov ebp, esp                ; esp 的值放到ebp 中
                                 ; c 的话在这里会 subl 申请栈， 用于存放局部变量

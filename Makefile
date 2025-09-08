@@ -40,8 +40,6 @@ QEMU := qemu-system-i386 \
 				-m 32M \
 				-boot c \
 				-drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw \
-				-audiodev dsound,id=audio0 \
-				-machine pcspk-audiodev=audio0 \
 				-rtc base=localtime
 
 qemu: $(BUILD)/master.img
@@ -53,7 +51,7 @@ qemu-debug: $(BUILD)/master.img
 bochs: $(BUILD)/master.img
 # 启动bochs
 # @echo $(CFLAG)
-	bochsdbg -q -f ./bochsrc 
+	bochs -q -f ./bochsrc 
 	
 # boot.bin -> boot.asm
 # loader.bin -> loader.asm
@@ -70,11 +68,11 @@ ifeq ("$(wildcard $(BUILD)/master.img)", "")
 endif
 #$(shell mkdir -p $(dir $@))	
 #   把boot.bin写512个字节到img的第0个扇区	[0, 0x200)
-	dd if=$(BUILD_BOOT)/boot.bin of=$@ bs=512 count=1 	
+	dd if=$(BUILD_BOOT)/boot.bin of=$@ bs=512 count=1 conv=notrunc
 #   把loader.bin 写 4 个512字节 到img中，跳过前两个0,1扇区，从第2个扇区开始写 0x400 [0x400, 0xC00]
-	dd if=$(BUILD_BOOT)/loader.bin of=$@ bs=512 count=4 seek=2 
+	dd if=$(BUILD_BOOT)/loader.bin of=$@ bs=512 count=4 seek=2 conv=notrunc
 #	把system.bin 写 8 个512字节 到img中， 跳过前10个扇区（0-9），从第10个扇区开始写 [0x1400, ...) 注意不是0x2000
-	dd if=$(BUILD_KERNEL)/system.bin of=$@ bs=512 count=200 seek=10
+	dd if=$(BUILD_KERNEL)/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
 
 
 ###################################################### 0. 编译boot 和loader
@@ -112,7 +110,7 @@ $(BUILD_KERNEL)/kernel.bin: $(BUILD_KERNEL)/start.o 		\
 							
 
 # 这里链接到了汇编和c # 并制定了代码段的位置 # 并且完成静态链接
-	ld -m i386pe -static $^ -o $@ -Ttext $(ENTRY_POINT)
+	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRY_POINT)
 
 ###################################################### 1. 从 asm 编译出 .o
 $(BUILD_KERNEL)/%.o: $(SRC_KERNEL)/%.asm

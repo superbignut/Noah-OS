@@ -156,7 +156,7 @@ static void idt_init()
     idt_ptr.limit = sizeof(idt) - 1;        //  极限是 8N-1 手册中有说明
     
     // XBB;
-    asm volatile("lidt _idt_ptr");          //  加载 idtr 寄存器
+    asm volatile("lidt idt_ptr");          //  加载 idtr 寄存器
 }
 
 

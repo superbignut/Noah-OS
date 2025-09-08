@@ -42,7 +42,7 @@ void gdt_init()
     assert(sizeof(segment_selector) == 2);      //  segment_sel 的大小是2个字节
     assert(sizeof(gdtr_content) == 6);          //  gdtr_content 的大小是2个字节
 
-    asm volatile("sgdt _gdt_ptr");              //  windows 增加前缀；把gdtr保存到 _gdt_ptr指针处
+    asm volatile("sgdt gdt_ptr");              //  windows 增加前缀；把gdtr保存到 _gdt_ptr指针处
 
     /*
         As with segments, the limit value is added to the base address to get the address of the last valid byte. 
@@ -56,7 +56,7 @@ void gdt_init()
 
     gdt_ptr.limit = sizeof(gdt) - 1;
 
-    asm volatile("lgdt _gdt_ptr");
+    asm volatile("lgdt gdt_ptr");
     
     printk("#### GDT_C INIT ...\n");
 } 
